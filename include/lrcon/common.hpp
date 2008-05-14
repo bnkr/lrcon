@@ -15,9 +15,11 @@
 
 #include <endian.h>
 
+#include <cerrno>
 #include <cstring>
 #include <cassert>
 #include <cerrno>
+#include <cstring>
 
 #include <stdexcept>
 #include <iostream>
@@ -150,7 +152,7 @@ namespace common {
         
         struct addrinfo hints;
         
-        hints.ai_family = AF_UNSPEC;     /* Allow IPv4 (values: IPv6 AF_INET or AF_INET6) */
+        hints.ai_family = AF_UNSPEC;     /* values: IPv6 AF_INET or AF_INET6 */
         assert(! (attr & tcp & udp));
         if (attr & udp) {
           hints.ai_socktype = SOCK_DGRAM;
@@ -169,12 +171,11 @@ namespace common {
         int r;
         if ((r = getaddrinfo(host, port, &hints, &ad_info)) != 0) {
           std::cerr << "gettaddrinfo(): " << gai_strerror(r) << std::endl;
-          throw connection_error(gai_strerror(r));
+          throw connection_error(std::string("gettaddrinfo() failed: ") + gai_strerror(r));
         }
         
         if (ad_info->ai_addr == NULL || ad_info->ai_addrlen == 0) {
           throw connection_error("No socket address returned.");
-          
         }
 #ifdef RCON_DEBUG_MESSAGES
         else if (ad_info->ai_next != NULL) {
@@ -224,13 +225,11 @@ namespace common {
         COMMON_DEBUG_MESSAGE("Initialising sockets.");
         socket_ = ::socket(server.family(), server.type(), 0);
         if (socket_ == -1) {
-          perror("socket()");
-          throw connection_error("socket() failed.");
+          throw connection_error(std::string("socket() failed: ") + strerror(errno));
         }
         
         if (connect(socket_, server.address(), server.address_len()) == -1) {
-          perror("connect()");
-          throw connection_error("connect() failed.");
+          throw connection_error(std::string("connect() failed: ") + strerror(errno));
         }
         
         COMMON_DEBUG_MESSAGE("Got sockets.");
@@ -247,15 +246,15 @@ namespace common {
   };
 
   
-  //! True if no timeout.  False otherwise.
-  inline bool wait_for_select(int socket_fd) {
+  //! True if no timeout.  False otherwise.  Time values are offsets.
+  inline bool wait_for_select(int socket_fd, int seconds = 1, int usecs = 0) {
     fd_set rfds;
     FD_ZERO(&rfds);
     FD_SET(socket_fd, &rfds);
         
     struct timeval timeout;
-    timeout.tv_sec = 2;
-    timeout.tv_usec = 0;
+    timeout.tv_sec = seconds;
+    timeout.tv_usec = usecs;
     if (select(socket_fd+1, &rfds, NULL, NULL, &timeout) == -1) {
       perror("select()");
       return false; // don't throw because the callers might need a different exception
