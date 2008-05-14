@@ -1,3 +1,5 @@
+// Copyright (C) 2008 James Weber
+// Under the GPL3, see COPYING
 /*!
 \file 
 \brief Client application to execute rcon commands.
@@ -29,7 +31,10 @@ void print_usage(const char *pname) {
       "  -p  password (required argument)\n"
       "  -P  port (default: 27015)\n"
       "  -s  server (default: localhost)\n"
-      "  -h  this message and exit.\n"
+      "  -h  this message and exit.\n\n"
+      "lrcon Copyright (C) 2008 James Weber\n"
+      "This program comes with ABSOLUTELY NO WARRANTY.  This is free software, and you\n"
+      "are welcome to distribute it under the terms of the GPLv3.\n"
       << std::flush;
 }
 

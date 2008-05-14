@@ -1,3 +1,5 @@
+// Copyright (C) 2008 James Weber
+// Under the GPL3, see COPYING
 /*!
 \file
 \brief File to add doxygen todos.

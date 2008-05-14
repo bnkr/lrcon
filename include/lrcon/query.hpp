@@ -1,3 +1,5 @@
+// Copyright (C) 2008 James Weber
+// Under the LGPL3, see COPYING
 /*!
 \file
 \brief The public query interface to a server.

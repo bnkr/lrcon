@@ -1,3 +1,5 @@
+// Copyright (C) 2008 James Weber
+// Under the LGPL3, see COPYING
 /*!
 \file
 \brief Includes the entire lrcon library.
@@ -37,6 +39,7 @@ documentation resides in \link lrcon.hpp \endlink.
 \par 0.4.1
 - Optimised use of timeouts (ie, getting rid of most of them) in RCON.
   The RCON/lrcon part is considered 'good' now.
+- Improvments to lrcon app.
 
 \section s_plans Plans
 
