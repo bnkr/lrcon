@@ -25,9 +25,9 @@ int stream_command(rcon::connection &conn, std::istream &in, const std::string &
 void print_usage(const char *pname) {
   std::cout 
       << pname << " -p password [OPTIONS] command [args]...\n"
-      "Executes command with args on an RCON server and retreive the output.  Command\n"
+      "Executes command with args on an RCON server and retrieve the output.  Command\n"
       "can be a hyphen (-) to trigger reading from stdin.  The program automatically\n" 
-      "reads from stdin if stdin is a pipe.\n\n"
+      "reads from stdin if it was redirected.\n\n"
       "  -p  password (required argument)\n"
       "  -P  port (default: 27015)\n"
       "  -s  server (default: localhost)\n"

@@ -52,7 +52,7 @@ See \ref p_RCON "RCON Protocol" for usage.
 
 //! All components of the RCON library.
 namespace rcon {
-#ifdef RCON_SYS_LITTLE_ENDIAN
+#ifdef LRCON_SYS_LITTLE_ENDIAN
   template <typename T>
   static T rcon_to_native_endian(T x) {
     return x;
@@ -89,68 +89,19 @@ namespace rcon {
   }
 #endif
   
-  //! Catch-all error class.
-  struct error : public std::runtime_error {
-    error(const std::string &s) : std::runtime_error(s) {}
-    ~error() throw() {}
-  };
-  
-  //! Network error, indicating some kind of failure.
-  struct network_error : public rcon::error {
-    network_error(const std::string &s) : error(s) {}
-    ~network_error() throw() {}
-  };
-  
-  //! General communications errors which might be recoverable.
-  struct comm_error : public rcon::error {
-    comm_error(const std::string &s) : error(s) {}
-    ~comm_error() throw() {}
-  };
-  
-  
-  //! A failure to connect(), socket() etc.
-  struct connection_error : public comm_error {
-    connection_error(const std::string &s) : comm_error(s) {}
-    ~connection_error() throw() {}
-  };
-  
-  //! A possibly recoverable error with authorisation.
-  struct auth_error : public comm_error {
-    auth_error(const std::string &s) : comm_error(s) {}
-    ~auth_error() throw() {}
-  };
-  
-  //! The password was wrong.
-  struct bad_password : public comm_error {
-    bad_password(const std::string &s) : comm_error(s) {}
-    ~bad_password() throw() {}
-  };
-    
-  //! Caused when the server responds with something unexpected (but not a true network or proto failure)
-  struct response_error : public comm_error {
-    response_error(const std::string &s) : comm_error(s) {}
-    ~response_error() throw() {}
-  };
-  
-  
-  //! Sending data failed.
-  struct send_error : public network_error {
-    send_error(const std::string &s) : network_error(s) {}
-    ~send_error() throw() {}
-  };
-  
-  //! Reading data failed.
-  struct recv_error : public network_error {
-    recv_error(const std::string &s) : network_error(s) {}
-    ~recv_error() throw() {}
-  };
-  
-  //! Caused by some violation of the protocol.
-  struct proto_error : public network_error {
-    proto_error(const std::string &s) : network_error(s) {}
-    ~proto_error() throw() {}
-  };
-  
+  //! For interface consistancy we alias these
+  //@{
+  typedef common::error error;
+  typedef common::comm_error comm_error;
+  typedef common::auth_error auth_error;
+  typedef common::bad_password bad_password;
+  typedef common::connection_error connection_error;
+  typedef common::response_error response_error;
+  typedef common::network_error network_error;
+  typedef common::proto_error proto_error;
+  typedef common::recv_error recv_error;
+  typedef common::send_error send_error;
+  //@}
 
   //! Convenience wrapper class
   struct host : public common::host {

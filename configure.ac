@@ -32,7 +32,33 @@ AC_TYPE_UINT32_T
 
 # Checks for library functions.
 AC_FUNC_SELECT_ARGTYPES
-AC_CHECK_FUNCS([select socket])
+AC_CHECK_FUNCS([select socket getaddrinfo])
+
+# Options
+
+enableval="no"
+AC_ARG_ENABLE([debug-rcon], 
+              AS_HELP_STRING([--enable-debug-rcon], [Turn on debugging output for lrcon binary.]) )
+
+RCON_DEBUG_FLAGS=""
+if test x$enableval != xno ; then
+  echo "info: debug for rcon is turned on."
+  RCON_DEBUG_FLAGS="-DRCON_DEBUG_MESSAGES"
+fi
+AC_SUBST([RCON_DEBUG_FLAGS])
+
+enableval="no"
+AC_ARG_ENABLE([debug-query], 
+              AS_HELP_STRING([--enable-debug-query], [Turn on debugging output for query binary.]) )
+
+QUERY_DEBUG_FLAGS=""
+if test x$enableval != xno ; then
+  echo "info: debug for query is turned on."
+  QUERY_DEBUG_FLAGS="-DQUERY_DEBUG_MESSAGES"
+fi
+AC_SUBST([QUERY_DEBUG_FLAGS])
+
+
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
