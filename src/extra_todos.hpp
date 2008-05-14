@@ -26,4 +26,24 @@
       things in a library.  Much nicer to give the user a way to check for them,
       and these assertion type things can be turned off.
 
+\todo Investigate making this work on windows.  The API actually seems pretty 
+      similar.
+
+\todo For unit testing I need to write a program where I can use nc in order to
+      send binary data to the program.  Something like writebin hex_values...
+      and on stdout it will write.  Then writebin | nc whatever.  Not sure how
+      to make it return the data tho without also writing a server...  
+
+\todo It would be cheaper to make a lookup table to convert the endianness.  I only
+      need it for int32 --- actually only for certain values too (request_id values,
+      command_id values).
+
+\todo I need to test split packets of RCON.  I really don't know how it is organised.
+      Perhaps I could invent an eventscript which would return a massive ammount 
+      of data (where massive >= max_payload).
+
+\todo Better error messages for the return values of C functions -- maybe do some string
+      getting... strerror, gai_error etc.
+
+
 */

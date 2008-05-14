@@ -6,22 +6,14 @@ See \ref p_RCON "RCON Protocol" for usage.
 
 \internal
 
-\todo Write unit tests.  Especially invalid data -- I don't handle it really (there 
-      isn't a great deal of it tho).
-
-\todo Make more assertions about the 'useless' properties of messages.  Could help
-      diagnosis when the proto changes.
-
-\todo It would be cheaper to make a lookup table to convert the endianness.  I only
-      need it for int32 --- actually only for certain values too (request_id values, 
-      command_id values).
-
 \todo Test with other RCON server types.
 
 \todo Buffering the data makes the program seem slow.  Is there a way we can ostream it
-      maybe?
-
-\todo Better error messages -- maybe do some string getting... strerror, gai_error etc.
+      maybe?  This is actually prety irrelevant after removing the timeouts.  The only
+      problem is split packets where we could print out as we get it.  It also gives 
+      the possiblity that we should make it easier to do this in the API -- the user
+      code could know that it will receive a multi-packet sequence and then organise
+      its timeouts accordingly.
 
 \todo The payload return always has a newline at the end of it.  I should get rid of 
       this so that I can guarantee that it won't be newline terminated.  Also document
@@ -222,6 +214,10 @@ namespace rcon {
       \param first_read  causes an recv_error if there is a timeout.
       
       \returns \c true if there is more to read; \c false otherwise.
+      
+      \warning The assumption is that there will only be more data if the entire 
+               payload is full up.  This is not documented and actually rather
+               hard to test since servers very rarely return split-packets.
       */
       bool read(int socket, bool first_read = true) {
         RCON_DEBUG_MESSAGE("Reading a packet.");
@@ -266,9 +262,11 @@ namespace rcon {
           throw response_error("received an invalid command id.");
         }
         
+        const int max_payload_size = max_string_length * 2;
+        size_t total_payload_size;
         {
           size -= 2 * sizeof(int32_t);
-          const int max_payload_size = max_string_length * 2;
+          
           assert(size < max_payload_size);
           assert(size > 0);
           char buf[max_payload_size];
@@ -288,11 +286,13 @@ namespace rcon {
           buf[max_payload_size-2] = buf[max_payload_size-1] = '\0';
           payload_.append(buf, idx-2); // don't put the 2 nulls on 
           
-          RCON_DEBUG_MESSAGE("  Payload: '" << payload_ << "' (used " << idx << "/" << max_payload_size << " bytes)");
+          total_payload_size = idx;
+          
+          RCON_DEBUG_MESSAGE("  Payload: '" << payload_ << "' (used " << total_payload_size << "/" << max_payload_size << " bytes)");
         }
         
         // there might be more to get
-        return true;
+        return (total_payload_size == max_payload_size);
       }
       
       //! \brief Reads all values ino the payload string until it reaches a timeout.
@@ -533,14 +533,8 @@ namespace rcon {
       command(common::connection_base &conn, const std::string &command, int32_t send_id = default_request_id)
       : command_base(conn, send_id, command_base::exec_request, command) {
         RCON_DEBUG_MESSAGE("Initialising an RCON command: '" << command << "'");
-        get_reply(conn);
-        
-        if (auth_lost()) {
-          throw auth_error("authentication was lost.");
-        }
-        else if (! valid()) {
-          throw response_error("request ids did not match.");
-        }
+        get_reply(conn, true);
+
       }
       
       //! \brief Don't throw exceptions if the server responded badly (except 'real' errors).
@@ -548,7 +542,7 @@ namespace rcon {
       : command_base(conn, send_id, command_base::exec_request, command) {
         RCON_DEBUG_MESSAGE("Initialising an RCON command: '" << command << "'");
         assert(send_id != auth_command::auth_denied_req_id);
-        get_reply(conn);
+        get_reply(conn, false);
       }
       
       //! Checks the request id was mirrord back correctly.
@@ -561,10 +555,25 @@ namespace rcon {
       }
       
     private:
-      //! Single-read
-      void get_reply(common::connection_base &conn) {
-        payload_ = ""; /// \todo I should proabably have a state reset function instead
-        read(conn.socket(), true); // error on timeout
+      //! Will read multiple packets maybe
+      void get_reply(common::connection_base &conn, bool check_validity = false) {
+        payload_ = "";
+        bool error_on_timeout = true;
+        bool more = false;
+        do {
+          more = read(conn.socket(), error_on_timeout);
+          
+          if (check_validity) {
+            if (auth_lost()) {
+              throw auth_error("authentication was lost.");
+            }
+            else if (! valid()) {
+              throw response_error("request ids did not match.");
+            }
+          }
+          
+          error_on_timeout = false;
+        } while (more);
       }
   };
   
