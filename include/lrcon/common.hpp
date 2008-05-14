@@ -215,11 +215,6 @@ namespace common {
            Or find it in host?  This is when the host is dropping packets I guess.
       
       \todo Likely I need to use select() here to see if it's ready to be connected to.
-      
-      \todo resolve the problems with exceptions
-      
-      
-      
       */
       connection_base(const host &server) {
         COMMON_DEBUG_MESSAGE("Initialising sockets.");
@@ -280,6 +275,64 @@ namespace common {
 #endif
   }
   
+#ifdef LRCON_SYS_LITTLE_ENDIAN
+  template <typename T>
+  static T rcon_to_native_endian(T x) {
+    return x;
+  }
+  
+  template <typename T>
+  static T native_to_rcon_endian(T x) {
+    return x;
+  }
+#else
+  template <typename T>
+  static T swap_endian(T x) {
+    size_t i = 0, j = sizeof(T) - 1;
+    char t;
+    char *y = (char *) &x;
+    size_t i;
+    while (i < j) {
+      t = y[i];
+      y[i] = y[j];
+      y[j] = t;
+      --j; ++i;
+    }
+    return x;
+  }
+  
+  template <typename T>
+  static T server_to_native_endian(T x) {
+    return swap_endian(x);
+  }
+  
+  template <typename T>
+  static T native_to_server_endian(T x) {
+    return swap_endian(x);
+  }
+#endif
+  
+  /*! 
+  \brief Reads an integral type, ensureing endianness.
+  \returns bytes sent or -1 on error
+  */
+  template<typename T>
+  bool read_type(int socket, T &v) {
+    int bytes = recv(socket, &v, sizeof(T), 0);
+    v = server_to_native_endian(v);
+    return bytes;
+  }
+  
+  /*! 
+  \brief Convenience wrapper, ensuring endianness.
+  \returns bytes sent or -1 on error
+  */
+  template <typename T>
+  bool send_type(int socket, T v) {
+    v = native_to_server_endian(v);
+    int bytes = send(socket, &v, sizeof(T), 0);
+    return bytes;
+  }
 }
 
 #endif

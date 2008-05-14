@@ -34,6 +34,8 @@ See \ref p_RCON "RCON Protocol" for usage.
 #include <unistd.h>
 
 #include <cassert>
+#include <cstring>
+#include <cerrno>
 
 #include <string>
 #include <stdexcept>
@@ -184,16 +186,19 @@ namespace rcon {
         const size_t min_packet_size = sizeof(int32_t) * 2 + 1 + 1;
         
         int32_t size;
-        if (! read_type<int32_t>(socket, size)) throw recv_error("recv() failed for size.");
+        if (! read_type<int32_t>(socket, size)) 
+          throw recv_error(std::string("recv() failed for size: ") + strerror(errno));
         
         if ((size < min_packet_size) || (size > max_packet_size)) {
           throw recv_error("invalid data size.");
         }
         
-        if (! read_type<int32_t>(socket, recvd_request_id_)) throw recv_error("recv() failed for request_id.");
+        if (! read_type<int32_t>(socket, recvd_request_id_)) 
+          throw recv_error(std::string("recv() failed for request_id: ") + strerror(errno));
           
         int32_t t;
-        if (! read_type<int32_t>(socket, t)) throw recv_error("recv() failed for command_id.");
+        if (! read_type<int32_t>(socket, t)) 
+          throw recv_error(std::string("recv() failed for command_id: ") + strerror(errno));
         
         RCON_DEBUG_MESSAGE("Properties of read: ");
         RCON_DEBUG_MESSAGE("  Initial size: " << size);
@@ -222,8 +227,7 @@ namespace rcon {
           while (size > 0) {
             int bytes = -1;
             if ((bytes = recv(socket, &buf[idx], size, 0)) == -1) {
-              perror("recv()");
-              throw recv_error("recv() failed for stringdata.");
+              throw recv_error(std::string("recv() failed for stringdata: ") + strerror(errno));
             }
             
             size -= bytes; 
@@ -262,38 +266,33 @@ namespace rcon {
         RCON_DEBUG_MESSAGE("Data sending properties: ");
         RCON_DEBUG_MESSAGE("  Packet: " << size);
         if (! send_type<int32_t>(socket, size)) {
-          perror("send()");
-          throw send_error("error sending size.");
+          throw send_error(std::string("error sending size: ") + strerror(errno));
         }
         
         RCON_DEBUG_MESSAGE("  Request id: " << send_request_id_);
         if (! send_type<int32_t>(socket, send_request_id_)) {
-          perror("send() failed:");
-          throw send_error("error sending request_id.");
+          throw send_error(std::string("error sending request_id: ") + strerror(errno));
         }
         
         RCON_DEBUG_MESSAGE("  Command id: " << command_id_);
         if (! send_type<int32_t>(socket, command_id_)) {
-          perror("send()");
-          throw send_error("error sending command_id.");
+          throw send_error(std::string("error sending command_id: ") + strerror(errno));
         }
         
         RCON_DEBUG_MESSAGE("  Payload: '" << payload_ << "'");
         int bs;
         if ((bs = send(socket, payload_.c_str(), payload_.length() + 1, 0)) == -1) {
-          perror("send()");
-          throw send_error("error sending payload.");
+          throw send_error(std::string("error sending payload: ") + strerror(errno));
         }
 
         if ((bs = send(socket, "", sizeof(char), 0)) == -1) {
-          perror("send()");
-          throw send_error("error sending terminating null.");
+          throw send_error(std::string("error sending terminating null: ") + strerror(errno));
         }
       }
      
     private:
       //! Reads an integral type, ensureing endianness.
-      //! \deprecated  Use the one in common.
+      //! \deprecated use the one in common
       //! \returns false in case of error.
       template<typename T>
       bool read_type(int socket, T &v) {
@@ -308,6 +307,7 @@ namespace rcon {
       }
       
       //! Convenience wrapper, ensuring endianness.
+      //! \deprecated use the one in common
       //! \returns false in case of error.
       template <typename T>
       bool send_type(int socket, T v) const {
@@ -444,7 +444,6 @@ namespace rcon {
               << payload_ << "' (" << payload_.length() << " bytes)");
         }
 #endif 
-        
       }
   };
 
