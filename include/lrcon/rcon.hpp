@@ -186,18 +186,18 @@ namespace rcon {
         const size_t min_packet_size = sizeof(int32_t) * 2 + 1 + 1;
         
         int32_t size;
-        if (! read_type<int32_t>(socket, size)) 
+        if (common::read_type(socket, size) == common::read_type_error) 
           throw recv_error(std::string("recv() failed for size: ") + strerror(errno));
         
         if ((size < min_packet_size) || (size > max_packet_size)) {
           throw recv_error("invalid data size.");
         }
         
-        if (! read_type<int32_t>(socket, recvd_request_id_)) 
+        if (common::read_type(socket, recvd_request_id_) == common::read_type_error) 
           throw recv_error(std::string("recv() failed for request_id: ") + strerror(errno));
           
         int32_t t;
-        if (! read_type<int32_t>(socket, t)) 
+        if (common::read_type(socket, t) == common::read_type_error) 
           throw recv_error(std::string("recv() failed for command_id: ") + strerror(errno));
         
         RCON_DEBUG_MESSAGE("Properties of read: ");
@@ -233,7 +233,6 @@ namespace rcon {
             size -= bytes; 
             idx += bytes;
           }
-          /// \todo What about when there are two strings?  Won't .append stop at the null?  Or would it go to the end?
           
           // Concatinate the two strings value to the payload.
           buf[max_payload_size-2] = buf[max_payload_size-1] = '\0';
@@ -265,59 +264,27 @@ namespace rcon {
         
         RCON_DEBUG_MESSAGE("Data sending properties: ");
         RCON_DEBUG_MESSAGE("  Packet: " << size);
-        if (! send_type<int32_t>(socket, size)) {
+        if (common::send_type(socket, size) == common::send_type_error) {
           throw send_error(std::string("error sending size: ") + strerror(errno));
         }
         
         RCON_DEBUG_MESSAGE("  Request id: " << send_request_id_);
-        if (! send_type<int32_t>(socket, send_request_id_)) {
+        if (common::send_type(socket, send_request_id_) == common::send_type_error) {
           throw send_error(std::string("error sending request_id: ") + strerror(errno));
         }
         
         RCON_DEBUG_MESSAGE("  Command id: " << command_id_);
-        if (! send_type<int32_t>(socket, command_id_)) {
+        if (common::send_type(socket, command_id_) == common::send_type_error) {
           throw send_error(std::string("error sending command_id: ") + strerror(errno));
         }
         
         RCON_DEBUG_MESSAGE("  Payload: '" << payload_ << "'");
-        int bs;
-        if ((bs = send(socket, payload_.c_str(), payload_.length() + 1, 0)) == -1) {
+        if (send(socket, payload_.c_str(), payload_.length() + 1, 0) == -1) {
           throw send_error(std::string("error sending payload: ") + strerror(errno));
         }
 
-        if ((bs = send(socket, "", sizeof(char), 0)) == -1) {
+        if (common::send_type(socket, '\0') ==  common::send_type_error) {
           throw send_error(std::string("error sending terminating null: ") + strerror(errno));
-        }
-      }
-     
-    private:
-      //! Reads an integral type, ensureing endianness.
-      //! \deprecated use the one in common
-      //! \returns false in case of error.
-      template<typename T>
-      bool read_type(int socket, T &v) {
-        if (recv(socket, &v, sizeof(T), 0) == -1) {
-          perror("recv()");
-          return false;
-        }
-        else {
-          v = rcon_to_native_endian(v);
-          return true;
-        }
-      }
-      
-      //! Convenience wrapper, ensuring endianness.
-      //! \deprecated use the one in common
-      //! \returns false in case of error.
-      template <typename T>
-      bool send_type(int socket, T v) const {
-        v = native_to_rcon_endian(v);
-        if (send(socket, &v, sizeof(T), 0) == -1) {
-          perror("recv()");
-          return false;
-        }
-        else {
-          return true;
         }
       }
   };

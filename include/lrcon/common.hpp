@@ -277,12 +277,12 @@ namespace common {
   
 #ifdef LRCON_SYS_LITTLE_ENDIAN
   template <typename T>
-  static T rcon_to_native_endian(T x) {
+  static T server_to_native_endian(T x) {
     return x;
   }
   
   template <typename T>
-  static T native_to_rcon_endian(T x) {
+  static T native_to_server_endian(T x) {
     return x;
   }
 #else
@@ -311,6 +311,10 @@ namespace common {
     return swap_endian(x);
   }
 #endif
+  
+  //! for convenience and readaility
+  const int read_type_error = -1;
+  const int send_type_error = -1;
   
   /*! 
   \brief Reads an integral type, ensureing endianness.
