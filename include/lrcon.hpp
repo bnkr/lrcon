@@ -33,16 +33,18 @@ documentation resides in \link lrcon.hpp \endlink.
 - Interface compatible reorganisation of some code to accomodate query
   connections.
 
+\par May 2008
 \par 0.4.1
 - Optimised use of timeouts (ie, getting rid of most of them) in RCON.
+  The RCON/lrcon part is considered 'good' now.
 
 \section s_plans Plans
 
-\par 0.4 
+\par 0.5 
 - First hacked up functionality for the query part.
 - Application for querying a counter-strike: source server.
 
-\par 0.5
+\par 0.6
 - Reorganisation of query code to reduce duplication.
 - Dynamic timeouts.
 

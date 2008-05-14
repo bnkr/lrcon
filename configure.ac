@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([lrcon], [0.4])
+AC_INIT([lrcon], [0.4.1])
 AM_INIT_AUTOMAKE([-Wall -Werror])
 
 # Checks for programs.
@@ -38,6 +38,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
   Makefile
   src/Makefile
+  include/Makefile
 ])
 
 AC_OUTPUT

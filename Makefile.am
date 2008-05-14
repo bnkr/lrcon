@@ -1,5 +1,5 @@
 # Build recursively in src
-SUBDIRS = src
+SUBDIRS = src include 
 EXTRA_DIST = docs Doxyfile.dev-dotty examples
 
 # So that dox are built before distribution, as well as letting the user
