@@ -236,14 +236,6 @@ namespace rcon {
           }
         }
         
-        /// \todo we should be able to exit early if we read less than the 
-        ///        max ammount of data... requires that the timeout checking 
-        ///        is reorganised (do it at the end -- pre-connect stuff at 
-        ///        the start should be done be done by the receiver... need
-        ///        to be careful tho (what if you read exactly the right ammount?)
-        ///        I suppose that's ok here -- you can just check that the two 
-        ///        strings were read (inc. the null terminators).
-        
         // Two ints, two strings.
         const size_t max_packet_size = sizeof(int32_t) * 2 + command_base::max_string_length * 2;
         // Two ints, two nulls.
