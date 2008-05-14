@@ -38,7 +38,7 @@ See \ref p_RCON "RCON Protocol" for usage.
 #ifndef RCON_HPP_58dx55q1
 #define RCON_HPP_58dx55q1
 
-#include "common.hpp"
+#include <lrcon/common.hpp>
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -51,7 +51,6 @@ See \ref p_RCON "RCON Protocol" for usage.
 #include <string>
 #include <stdexcept>
 #include <iostream>
-
 
 #ifdef RCON_DEBUG_MESSAGES 
 #  include <iostream>

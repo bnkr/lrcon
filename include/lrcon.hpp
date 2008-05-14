@@ -165,5 +165,5 @@ packets.
 
 */
 
-#include "query.hpp"
-#include "rcon.hpp"
+#include <lrcon/query.hpp>
+#include <lrcon/rcon.hpp>

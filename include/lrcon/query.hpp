@@ -17,7 +17,7 @@
 #ifndef QUERY_HPP_ifzth5xs
 #define QUERY_HPP_ifzth5xs
 
-#include "common.hpp"
+#include <lrcon/common.hpp>
 
 #ifdef QUERY_DEBUG_MESSAGES
 #  include <iostream>
