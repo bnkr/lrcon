@@ -15,10 +15,6 @@ See \ref p_RCON "RCON Protocol" for usage.
       code could know that it will receive a multi-packet sequence and then organise
       its timeouts accordingly.
 
-\todo The payload return always has a newline at the end of it.  I should get rid of 
-      this so that I can guarantee that it won't be newline terminated.  Also document
-      this.  Should happen in the command base classes.
-
 \todo Is it allowed for the server to send null return data?  If so, then I can check
       for this error --- if so it means that there was no authorisation given.
 
