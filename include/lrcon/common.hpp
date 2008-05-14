@@ -123,9 +123,13 @@ namespace common {
         call.  Any way I can trap it here?  Or elsewhere?
   
   \todo take an int for the port as well -- overloaded.  We can supply it as
-        part of the hints.
+        part of the hints.  Then you can just htonl it and put it in the hints 
+        I think.
   
-  \bug When connecting to propperlush at localhost, the connection is refused.
+  \todo Better way of determining is_ip.  Bitmasks suck.  Better host(ip("127....));
+        and host(string("sdfsdf").  Bit iffy tho.  How does the user code make that
+        nice?
+
   */
   class host {
     struct addrinfo *ad_info;

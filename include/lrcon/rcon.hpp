@@ -17,9 +17,6 @@ See \ref p_RCON "RCON Protocol" for usage.
       code could know that it will receive a multi-packet sequence and then organise
       its timeouts accordingly.
 
-\todo Is it allowed for the server to send null return data?  If so, then I can check
-      for this error --- if so it means that there was no authorisation given.
-
 \todo some code can be shared with query, especially the memcpy stuff and endian crap.
       Or at least I think so.
 */
@@ -245,7 +242,7 @@ namespace rcon {
         }
         
         // there might be more to get
-        return (total_payload_size == max_payload_size);
+        return (size == max_packet_size);
       }
       
       //! \brief Reads all values ino the payload string until it reaches a timeout.
@@ -455,6 +452,12 @@ namespace rcon {
   \brief An arbitrary RCON command.  
   
   All methods take and return host-endian values.  Conversion is transparent.
+  
+  \internal
+  
+  \note When you do not auth first, the server will just return a null data packet.
+        It is not determined whether we can use this to assert for an error though
+        as it's possible some commands might not give any output.
   */
   class command : public command_base {
     public:
