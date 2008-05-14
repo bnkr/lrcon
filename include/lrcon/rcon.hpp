@@ -265,6 +265,7 @@ namespace rcon {
         const int max_payload_size = max_string_length * 2;
         size_t total_payload_size;
         {
+          // Read the entire rest of the packet
           size -= 2 * sizeof(int32_t);
           
           assert(size < max_payload_size);
@@ -282,9 +283,12 @@ namespace rcon {
             size -= bytes; 
             idx += bytes;
           }
-          // there are always nulls at the end anyway.
+          /// \todo What about when there are two strings?  Won't .append stop at the null?  Or would it go to the end?
+          
+          // Concatinate the two strings value to the payload.
           buf[max_payload_size-2] = buf[max_payload_size-1] = '\0';
-          payload_.append(buf, idx-2); // don't put the 2 nulls on 
+          payload_.append(buf);
+          if (payload_.length() != idx-2) payload_.append(&buf[payload_.length()]);
           
           total_payload_size = idx;
           

@@ -12,6 +12,8 @@
 
 #include <lrcon/rcon.hpp>
 
+#include <cstdlib>
+
 void print_usage(const char *pname) {
   std::cout 
       << pname << " -p password [OPTIONS] command [args]...\n"
@@ -49,19 +51,19 @@ int main(const int argc, const char *const argv[]) {
       }
       else if (strcmp(argv[i], "-p") == 0) {
         ++i;
-        if (! check_required_arg(argc, argv, i, "-p")) return 1;
+        if (! check_required_arg(argc, argv, i, "-p")) return EXIT_FAILURE;
 
         pass = argv[i];
       }
       else if (strcmp(argv[i], "-P") == 0) {
         ++i;
-        if (! check_required_arg(argc, argv, i, "-P")) return 1;
+        if (! check_required_arg(argc, argv, i, "-P")) return EXIT_FAILURE;
 
         port = argv[i];
       }
       else if (strcmp(argv[i], "-s") == 0) {
         ++i;
-        if (! check_required_arg(argc, argv, i, "-s")) return 1;
+        if (! check_required_arg(argc, argv, i, "-s")) return EXIT_FAILURE;
         
         host = argv[i];
       }
@@ -75,13 +77,16 @@ int main(const int argc, const char *const argv[]) {
     if (pass[0] == '\0') {
       std::cerr << "Error: no password parameter." << std::endl;
       print_usage(argv[0]);
-      return 1; 
+      return EXIT_FAILURE; 
     }
     
     if (i >= argc) {
       std::cerr << "Error: no command given." << std::endl;
       print_usage(argv[0]);
-      return 1;
+      return EXIT_FAILURE;
+    }
+    else if (*argv[i] == '-') {
+      /// read commands from stdin
     }
     else {
       command = argv[i++];
@@ -98,13 +103,18 @@ int main(const int argc, const char *const argv[]) {
   try {
     rcon::connection conn(rcon::host(host, port), pass);
     rcon::command cmd(conn, command);
-    std::cout << cmd.data() << std::endl;
+    if (cmd.data().length() == 0 || cmd.data()[cmd.data().length() - 1] != '\n') {
+      std::cout << cmd.data() << std::endl;
+    }
+    else {
+      std::cout << cmd.data() << std::flush;
+    }
   }
   catch (rcon::error &e) {
     std::cerr << "Error: " << e.what() << std::endl;
-    return 1;
+    return EXIT_FAILURE;
   }
   
-  return 0;
+  return EXIT_SUCCESS;
 }
 
