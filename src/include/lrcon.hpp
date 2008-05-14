@@ -33,6 +33,9 @@ documentation resides in \link lrcon.hpp \endlink.
 - Interface compatible reorganisation of some code to accomodate query
   connections.
 
+\par 0.4.1
+- Optimised use of timeouts (ie, getting rid of most of them) in RCON.
+
 \section s_plans Plans
 
 \par 0.4 
@@ -88,7 +91,7 @@ immediatly authenticate with the server.
 /*!
 \page p_query Query Usage
 
-\todo document this and have examples once it's done.
+\todo Document this and have examples once it's done.  It's basically the same but meh.
 
 
 \see http://developer.valvesoftware.com/wiki/Server_Queries for documentation of the
@@ -143,8 +146,9 @@ packets.
 
 - it seems that when authing, two packets are sent in acknowledgement.  The second is
   the real valid one.  This does not seem to be documented anywhere though.  (note:
-  the conclusion here is that you should always read until a timeout, and you
-  should always refresh the header values)
+  the conclusion here is that to be safe you should always read until a timeout, and you
+  should always refresh the header values).  See the documentation for 
+  auth_command::get_reply() for a more detailed list of the behavior of this.
 - the entire protocol is little endian, not network order.  Basically, everything is
   x86 specific.
 - always include both strings, even if one is null (so there will be two nulls at the 

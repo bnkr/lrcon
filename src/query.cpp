@@ -2,14 +2,9 @@
 \file
 \brief The public query app.
 
-\todo Redo the code using connect().  It's neater, I think.  And no need to 
-      keep the host var lying around.
-
 \todo Work out how to deal with out of order packets. 
 
 \todo move common code into query_base and all over the place
-
-\todo Much of the endian code is duplicated.
 
 \par Problems
 - The connection code seems identical
@@ -34,7 +29,8 @@
     - so it is resolved that it gets done in the query object.
 - code reuse: seems that some code from query_base is duplcated in command_base.  Not much 
   tho.
-
+- timeouts: sometimes we know how many packets, or at least the user might.  We do not want
+  to have to wait for packets every time!  So the todo
 
 */
 

@@ -25,17 +25,13 @@ See \ref p_RCON "RCON Protocol" for usage.
 
 \todo The payload return always has a newline at the end of it.  I should get rid of 
       this so that I can guarantee that it won't be newline terminated.  Also document
-      this.
+      this.  Should happen in the command base classes.
 
 \todo Is it allowed for the server to send null return data?  If so, then I can check
       for this error --- if so it means that there was no authorisation given.
 
 \todo some code can be shared with query, especially the memcpy stuff and endian crap.
       Or at least I think so.
-
-\todo It would be nice to have a 'only read one packet' version, so you can just packet
-      off whatever you want and forget about waiting for the stream to be finished values.
-      Variable timeouts might solve this.
 */
 
 
@@ -191,7 +187,6 @@ namespace rcon {
         exec_response = 0
       } command_id_t;
       
-    private:
       int32_t send_request_id_;
       int32_t recvd_request_id_;
       int32_t command_id_;
@@ -211,16 +206,13 @@ namespace rcon {
       int32_t send_id() const { return send_request_id_; } 
       
       /*! 
-      \brief Send the packet and get the reply.
+      \brief Send the packet but does not get the reply; the subclass decides the receive strategy.
       
-      \throws recv_error
       \throws send_error 
-      \throws response_error  
       */
       command_base(common::connection_base &c, int32_t send_id, command_id_t command_id, const std::string &payload)
       : send_request_id_(send_id), command_id_((int32_t) command_id), payload_(payload) {
         write(c.socket());
-        read_all(c.socket());
       }
       
       /*! 
@@ -303,10 +295,10 @@ namespace rcon {
           }
           // there are always nulls at the end anyway.
           buf[max_payload_size-2] = buf[max_payload_size-1] = '\0';
-          payload_.append(buf, idx);
+          payload_.append(buf, idx-2); // don't put the 2 nulls on 
+          
+          RCON_DEBUG_MESSAGE("  Payload: '" << payload_ << "' (used " << idx << "/" << max_payload_size << " bytes)");
         }
-        
-        RCON_DEBUG_MESSAGE("  Payload: '" << payload_ << "'");
         
         // there might be more to get
         return true;
@@ -357,7 +349,7 @@ namespace rcon {
           throw send_error("error sending terminating null.");
         }
       }
-      
+     
     private:
       //! Reads an integral type, ensureing endianness.
       //! \deprecated  Use the one in common.
@@ -430,15 +422,13 @@ namespace rcon {
         RCON_DEBUG_MESSAGE("Initialising an RCON auth request: '" << password << "'");
         assert(request_id != auth_denied_req_id);
         assert(password.length() < 4096);
+        get_reply(conn);
         
         if (auth() == failed) {
           throw bad_password("authentication denied.");
         }
         else if (auth() == error) {
           throw auth_error("the server returned an unexpected value.");
-        }
-        else if (command_id() != command_base::auth_response) {
-          throw proto_error("the server did not return an authorisation response.");
         }
       }
       
@@ -458,10 +448,7 @@ namespace rcon {
         RCON_DEBUG_MESSAGE("Initialising an RCON auth request (no checking): '" << password << "'");
         assert(request_id != auth_denied_req_id);
         assert(password.length() < 4096);
-        
-        if (command_id() != command_base::auth_response) {
-          throw proto_error("the server did not return an authorisation response.");
-        }
+        get_reply(conn);
       }
       
       //! \brief Check the request ids match.
@@ -475,6 +462,48 @@ namespace rcon {
         else {
           return error;
         }
+      }
+      
+    private:
+      /*!
+      I make the following undocumented assumption:
+      - authing returns a 'mirror' packet followed by the actual auth accepted/denied packet.  
+        (Actually the implementation would be broken if I didn't assume this!) 
+      - There will be exactly two packets.  If there are more than two packets, further calls 
+        will probably fail.
+      - The mirror packet will be a standard valid response header (ie, send_id == recieve_id 
+        and command_id == exec_response) but the data will be null (I only warn if there is 
+        null data).
+      - 
+      
+      \throw proto_error  if my assumptions were wrong.
+      */
+      void get_reply(common::connection_base &conn) {
+        payload_ = "";
+        read(conn.socket(), true);
+        if (receive_id() != send_id() || command_id() != command_base::exec_response) {
+          throw proto_error("request ID was not returned by the server."); /// \todo should it be revc_error?
+        }
+        
+#ifdef RCON_DEBUG_MESSAGE
+        if (payload_ != "") {
+          RCON_DEBUG_MESSAGE("Warning: the server's mirror packet has some data with it: '" 
+              << payload_ << "' (" << payload_.length() << " bytes)");
+        }
+#endif 
+        
+        read(conn.socket(), true);
+        if (command_id() != command_base::auth_response) {
+          throw proto_error("the server did not return an authorisation response.");
+        }       
+        
+#ifdef RCON_DEBUG_MESSAGE
+        if (payload_ != "") {
+          RCON_DEBUG_MESSAGE("Warning: the server's auth response packet has some data with it: '" 
+              << payload_ << "' (" << payload_.length() << " bytes)");
+        }
+#endif 
+        
       }
   };
 
@@ -513,7 +542,8 @@ namespace rcon {
       command(common::connection_base &conn, const std::string &command, int32_t send_id = default_request_id)
       : command_base(conn, send_id, command_base::exec_request, command) {
         RCON_DEBUG_MESSAGE("Initialising an RCON command: '" << command << "'");
-        assert(send_id != auth_command::auth_denied_req_id);
+        get_reply(conn);
+        
         if (auth_lost()) {
           throw auth_error("authentication was lost.");
         }
@@ -522,12 +552,12 @@ namespace rcon {
         }
       }
       
-      //! \brief Don't throw exceptions if the server responded badly.
-      //! \note Network errors still cause exceptions.
+      //! \brief Don't throw exceptions if the server responded badly (except 'real' errors).
       command(common::connection_base &conn, const std::string &command, nocheck_t, int32_t send_id = default_request_id)
       : command_base(conn, send_id, command_base::exec_request, command) {
         RCON_DEBUG_MESSAGE("Initialising an RCON command: '" << command << "'");
         assert(send_id != auth_command::auth_denied_req_id);
+        get_reply(conn);
       }
       
       //! Checks the request id was mirrord back correctly.
@@ -537,6 +567,13 @@ namespace rcon {
       bool auth_lost() const { 
         return receive_id() == auth_command::auth_denied_req_id 
                || command_id() == command_base::auth_response;
+      }
+      
+    private:
+      //! Single-read
+      void get_reply(common::connection_base &conn) {
+        payload_ = ""; /// \todo I should proabably have a state reset function instead
+        read(conn.socket(), true); // error on timeout
       }
   };
   

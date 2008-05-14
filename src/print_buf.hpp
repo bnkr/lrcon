@@ -11,7 +11,7 @@
 #include <cstdio>
 
 //! Print an indivicual character
-static void print_buf_chr(unsigned char c, char deadchar = '.') {
+static inline void print_buf_chr(unsigned char c, char deadchar = '.') {
   if (c == '\n' || c == '\r' || c == '\t') {
     putchar(deadchar);
   }

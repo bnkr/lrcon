@@ -108,9 +108,9 @@ namespace common {
         }
 #ifdef RCON_DEBUG_MESSAGES
         else if (ad_info->ai_next != NULL) {
-          RCON_DEBUG_MESSAGE("Warning: more than one socket address was returned "
-                             "from gettaddrinfo().  This could be a sign of protocol "
-                             "changes or that the host is multi-homed." << std::endl;
+          COMMON_DEBUG_MESSAGE("Warning: more than one socket address was returned "
+                               "from gettaddrinfo().  This could be a sign of protocol "
+                               "changes or that the host is multi-homed.");
         }
 #endif
       }

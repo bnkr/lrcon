@@ -8,7 +8,7 @@ include_lrcondir = ${includedir}/lrcon/
 lrcon_SOURCES = lrcon.cpp  
 lrcon_CXXFLAGS = -Wall -pedantic
 lrcon_CPPFLAGS = -I${srcdir}/include/
-#lrcon_CPPFLAGS += -DRCON_DEBUG_MESSAGES
+lrcon_CPPFLAGS += -DRCON_DEBUG_MESSAGES
 
 query_SOURCES = query.cpp print_buf.hpp
 query_CXXFLAGS = -Wall -pedantic
