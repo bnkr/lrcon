@@ -165,12 +165,12 @@ namespace query {
         send_buffered_packet(conn.socket(), pkt_ping, sizeof(pkt_ping));
         
         int timeleft = common::wait_for_select(conn.socket(), timeout);
-        if (timeleft == 0) {
+         if (timeleft == common::wait_for_select_error) {
+          common::errno_throw<common::recv_error>("select() failed"); /// \todo different exception?
+        }
+        else if (timeleft == common::wait_for_select_timeout) {
           QUERY_DEBUG_MESSAGE("Timeout.");
           latency_ = no_ping;
-        }
-        else if (timeleft == -1) {
-          common::errno_throw<common::recv_error>("select() failed"); /// \todo different exception?
         }
         else {
           latency_ = timeleft - timeout;
@@ -193,8 +193,8 @@ namespace query {
     
     protected:
       bool read(int socket_fd) { 
-        char buf[1400];
-        int read = common::read_to_buffer(socket_fd, buf, 1400);
+        char buf[max_packet_size];
+        int read = common::read_to_buffer(socket_fd, buf, max_packet_size);
         
 #ifdef QUERY_DEBUG_MESSAGES
         char reply = buf[4];
@@ -221,6 +221,8 @@ namespace query {
       }
   };
   
+ 
+  
   /// question: do you always need a new challenge number for every relevant request?
   
   /// Extensibility: other games have query protocols.  We could well implement them using
@@ -243,13 +245,18 @@ namespace query {
     protected:
       /// \todo this function could be generalised for any bytesequence
       bool read(int socket, bool first_read = false) {
-        if (! common::wait_for_select(socket)) {
+        int r = common::wait_for_select(socket);
+        if (r == common::wait_for_select_timeout) {
           if (first_read) throw common::timeout_error("timeout reading an info reply");
           return false;
         }
+        else if (r == common::wait_for_select_error) {
+          errno_throw<recv_error>("select() failed");
+        }
+
         
-        char buf[1400];
-        int read = common::read_to_buffer(socket, buf, 1400);
+        char buf[max_packet_size];
+        int read = common::read_to_buffer(socket, buf, max_packet_size);
         
         print_buf(buf, read);
         
@@ -276,11 +283,9 @@ namespace query {
         enum split_type {split_single = -1, split_multiple = -2};
         if (split_type == split_single) {
           QUERY_DEBUG_MESSAGE("  split type: single");
-          /// \todo how to handle this?
         }
         else if (split_type == split_multiple) {
           QUERY_DEBUG_MESSAGE("  split type: multiple");
-          /// \todo Handle somehow
         }
         else {
           throw common::proto_error("split type invalid");
@@ -388,7 +393,7 @@ namespace query {
       }
       
       /// if I put this in the parent and call it from the self::constructor would
-      /// it still work?
+      /// it still work?  don;'t think so
       void read_all(int socket) {
         /// this is totally duplicated from rcon (but it might be expanded to deal with
         /// multipackets)
@@ -399,8 +404,6 @@ namespace query {
       }
   };
 
-  /// \todo maybe I should not bother doing endian conversion on the challenge num and simply say, 
-  ///       that  this class is not to be used.
   //! \brief Get the challenge number for use in players and rules queries.
   class challenge : public static_packet {
     int32_t challenge_num_;
@@ -409,8 +412,6 @@ namespace query {
       challenge(common::connection_base &conn) {
         QUERY_DEBUG_MESSAGE("Challenge query");
         send_buffered_packet(conn.socket(), pkt_challenge, sizeof(pkt_challenge));
-        
-        /// \todo what about getting more than one packet back?
         read(conn.socket());
       }
       
@@ -423,38 +424,40 @@ namespace query {
       void read(int socket) {
         QUERY_DEBUG_MESSAGE("Reading:");
         
-        if (! common::wait_for_select(socket)) throw std::runtime_error("timed out reading"); ///\todo proper execpt
-        
-        /// this func should really be designed more like the others (for consistancy)
-        
-        /// \todo use a constant for the max steam packet length
-        char buff[1400];
-        int bytes = recv(socket, buff, 1400, 0);
-        if (bytes == -1) throw int(1);
-        else if (bytes != sizeof(int32_t) + sizeof(int8_t) + sizeof(int32_t)) {
-          throw std::runtime_error("response error -- sent invalid packet");
+        int t = common::wait_for_select(socket);
+        if (t == common::wait_for_select_timeout) {
+          throw common::timeout_error("timed out reading");
+        }
+        else if (t == common::wait_for_select_error) {
+          commom::errno_throw<recv_error>("select() failed");
         }
         
-        int32_t type;
-        common::endian_memcpy(type, &buff[0]);
+        char buff[max_packet_size];
+        int bytes = read_to_buffer(socket, buff, max_packet_size, "failed reading challenge packet");
+        if (bytes != sizeof(int32_t) + sizeof(int8_t) + sizeof(int32_t)) {
+          throw std::proto_error("invalid packet received");
+        }
+        
+
+        
+        size_t idx = 0;
+        int32_t type = from_buffer<int32_t>(buff, idx);
         QUERY_DEBUG_MESSAGE("  type: " << type);
-        int8_t flag;
-        common::endian_memcpy(flag, &buff[4]);
+        
+        int8_t flag = from_buffer<int8_t>(buff, idx);
         QUERY_DEBUG_MESSAGE("  flag: " << (char) flag);
-        if (flag != 0x41) throw std::runtime_error("response error -- bad packet flag");
+        if (flag != 0x41) throw common::proto_error("bad packet flag in challenge response");
+        
         memcpy(&this->challenge_num_, &buff[5], sizeof(int32_t)); // don't convert endianness
         QUERY_DEBUG_MESSAGE("  challenge_num: " << challenge_num_);
         
-        /// \todo poll the socket here -- if there's data then it's an error (but would we need to
-        ///       timeout anyway?  Polling would always end up returning.)  It would be a lot faster
-        ///       to assume that only one packet is returned.
-          
-        if (common::wait_for_select(socket)) std::cerr << "Warning: too much data received." << std::endl;
+        /// \todo Could I check that there is more data without having a huge timeout wait period?
       }
   };
   
-  /// \todo consider a class static_packet and challenged_packet query objects.
-  
+    //////////////////////////////////////////////////////
+    /// NOTE: I stopped updatng the code at this point ///
+    //////////////////////////////////////////////////////
   
   
   //! \brief List of players on the server

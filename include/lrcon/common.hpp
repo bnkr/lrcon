@@ -249,6 +249,9 @@ namespace common {
       int socket() { return socket_; }
   };
   
+  const int wait_for_select_error = -1;
+  const int wait_for_select_timeout = 0;
+  
   //! 0 if timeout, time_left if no timeout, -1 if error.  Time params are offsets.
   inline int wait_for_select(int socket_fd, int timeout_usecs = 1000000) {
     fd_set rfds;
@@ -259,14 +262,14 @@ namespace common {
     timeout.tv_sec = 0;
     timeout.tv_usec = timeout_usecs;
     if (select(socket_fd+1, &rfds, NULL, NULL, &timeout) == -1) {
-      return -1; // don't throw because the callers might need a different exception
+      return wait_for_select_error; // don't throw because the callers might need a different exception
     }
     
     if (FD_ISSET(socket_fd, &rfds)) {
       return timeout.tv_usec; 
     }
     else {
-      return 0;
+      return wait_for_select_timeout;
     }
   }
   
