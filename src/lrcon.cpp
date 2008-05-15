@@ -6,7 +6,8 @@
 
 \internal
 
-\todo Maybe upgrade to an interractive sesssion.
+\todo Interactive session... I suppose not much point really except to implement
+      ctrl+delete and stuff like that.
 
 \todo More options, eg don't print any output -- especially relevant for a scripted
       session.

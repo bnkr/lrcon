@@ -96,6 +96,12 @@ namespace common {
     ~response_error() throw() {}
   };
   
+  //! An unexpected timeout
+  struct timeout_error : public comm_error {
+    timeout_error(const std::string &s) : comm_error(s) {}
+    ~timeout_error() throw() {}
+  };
+  
   
   //! Sending data failed.
   struct send_error : public network_error {
@@ -243,24 +249,25 @@ namespace common {
       int socket() { return socket_; }
   };
   
-  //! True if no timeout.  False otherwise.  Time values are offsets.
-  //! \todo this should return -1 for error; otherwise it is indistinguishable -- not 
-  //!       sure if that borks anything yet tho.
-  inline bool wait_for_select(int socket_fd, int seconds = 1, int usecs = 0) {
+  //! 0 if timeout, time_left if no timeout, -1 if error.  Time params are offsets.
+  inline int wait_for_select(int socket_fd, int timeout_usecs = 1000000) {
     fd_set rfds;
     FD_ZERO(&rfds);
     FD_SET(socket_fd, &rfds);
         
     struct timeval timeout;
-    timeout.tv_sec = seconds;
-    timeout.tv_usec = usecs;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = timeout_usecs;
     if (select(socket_fd+1, &rfds, NULL, NULL, &timeout) == -1) {
-      perror("select()");
-      return false; // don't throw because the callers might need a different exception
+      return -1; // don't throw because the callers might need a different exception
     }
     
-    // false if timed out
-    return FD_ISSET(socket_fd, &rfds);
+    if (FD_ISSET(socket_fd, &rfds)) {
+      return timeout.tv_usec; 
+    }
+    else {
+      return 0;
+    }
   }
   
   //! Copies from little endian to system endian.
@@ -331,6 +338,27 @@ namespace common {
     return bytes;
   }
   
+  //! Get a value from a buffer.  Also increments idx by reference
+  template<typename T>
+  T from_buffer(const void *source, size_t &idx) {
+    T v;
+    char *s = (char *) source+idx;
+    common::endian_memcpy(v, s);
+    idx += sizeof(T);
+    return v;
+  }
+  
+  //! Adds to a string (also increments idx by reference).  The compiler definitely should 
+  //! optimise the by-value copy out when initialising a variable.
+  inline std::string from_buffer(void *buf, size_t &idx, size_t max) {
+    char *b = (char *) buf;
+    size_t start = idx;
+    while (idx < max && b[idx++] != '\0');
+    size_t chrs = idx - start;
+    return std::string(&b[start], chrs);
+  }
+  
+  
   /*! 
   \brief Convenience wrapper, ensuring endianness.
   \returns bytes sent or -1 on error
@@ -340,6 +368,19 @@ namespace common {
     v = native_to_server_endian(v);
     int bytes = send(socket, &v, sizeof(T), 0);
     return bytes;
+  }
+  
+  template <typename Exception>
+  int read_to_buffer(int socket_fd, void *buff, size_t buffsz, const char *errormsg = "recv() failed") {
+    int read = 0;
+    if ((read = recv(socket_fd, buff, buffsz, 0)) == -1) {
+      common::errno_throw<Exception>(errormsg);
+    }
+    return read;
+  }
+  
+  int read_to_buffer(int socket_fd, void *buff, size_t buffsz, const char *errormsg = "recv() failed") {
+    return read_to_buffer<recv_error>(socket_fd, buff, buffsz, errormsg);
   }
 }
 

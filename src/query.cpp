@@ -4,9 +4,9 @@
 \file
 \brief The public query app.
 
-\todo Work out how to deal with out of order packets. 
-
-\todo move common code into query_base and all over the place
+\todo Work out how to deal with out of order packets, split packets.  Frankly I don't
+      think it's possible until I work out how it deals with split packets; and I'm not
+      going to be able to find that out without somehow generating the data.
 
 \par Problems
 - The connection code seems identical
@@ -132,49 +132,56 @@ namespace query {
     /// atm it seems this is a bit ueeless.. too much function wrapping is just confusing.
   };
   
-  //! \brief A ping command to measure latency.
-  /// 
-  /// \todo Somehow I might have to organise an error-tollerant connection in order that it doesn't
-  ///       throw if the host doesn't exist... since I haven't actually worked out how to check this
-  ///       yet it's moot tho ^^
+ 
+  /*! 
+  \brief A ping command to measure latency.
+  
+  \note This command cannot be used to determine if the host exists as the connection
+        object would detect this and throw an exception.
+  
+  \internal
+  
+  \todo Perhaps that note means I should maek a connection object which is instancable 
+        and merely determines that hte host is existing.
+  
+  \todo Is there a better way to measure the latency?  I'm also including some of the 
+        overhead for setting up the actual measuring kit here in the time.
+  */
   class ping : public static_packet {
     int latency_;
     
     public:
-      static const int timeout = -1;
+      //! There was a timeout
+      static const int no_ping = -1;
+      //! Time in usecs to wait
+      static const int timeout = 1000000;
       
+      /*!
+      \throws send_error
+      \throws recv_error
+      */
       ping(common::connection_base &conn) : latency_(timeout) {
         QUERY_DEBUG_MESSAGE("Sending ping packet.");
         send_buffered_packet(conn.socket(), pkt_ping, sizeof(pkt_ping));
         
-        fd_set rfds;
-        FD_ZERO(&rfds);
-        FD_SET(conn.socket(), &rfds);
-            
-        const int timeout_wait = 500000;
-        struct timeval time;
-        time.tv_sec = 0;
-        time.tv_usec = timeout_wait;
-        if (select(conn.socket()+1, &rfds, NULL, NULL, &time) == -1) {
-          perror("select()");
-          throw std::runtime_error("select"); /// \todo proper exception
+        int timeleft = common::wait_for_select(conn.socket(), timeout);
+        if (timeleft == 0) {
+          QUERY_DEBUG_MESSAGE("Timeout.");
+          latency_ = no_ping;
         }
-        
-        // time.usec has the remaning time left
-        if (! FD_ISSET(conn.socket(), &rfds)) {
-          latency_ = timeout;
+        else if (timeleft == -1) {
+          common::errno_throw<common::recv_error>("select() failed"); /// \todo different exception?
         }
         else {
-          latency_ = timeout_wait - time.tv_usec; 
+          latency_ = timeleft - timeout;
+          QUERY_DEBUG_MESSAGE("Latency is: " << latency_);
         }
-                
-        /// I don't actually need to read this stuff do I?  Certainly don't need to process it.
         
         read(conn.socket());
       }
       
       //! Did the server reply?
-      bool pingable() const { return latency_ != -1; }
+      bool pingable() const { return latency_ != no_ping; }
       
       /*! 
       \brief The latency value calculated in nano-seconds (usec)
@@ -186,18 +193,10 @@ namespace query {
     
     protected:
       bool read(int socket_fd) { 
-        //! \todo duplicated reading conversion from buff->val here.
-        
-        // We don't actually care about the return value here, just that 
-        // it exists.
-        
-        int read = 0;
         char buf[1400];
-        if ((read = recv(socket_fd, buf, 1400, 0)) == -1) {
-          perror("recv()");
-          throw int(1); /// \todo proper except
-        }
+        int read = common::read_to_buffer(socket_fd, buf, 1400);
         
+#ifdef QUERY_DEBUG_MESSAGES
         char reply = buf[4];
         if (reply != 'j') {
           std::cerr << "Warning: invalid ping reply received." << std::endl;
@@ -214,10 +213,10 @@ namespace query {
           std::cerr << "Warning: invalid ping reply received." << std::endl;
         }
         
-        /// \todo somehow check that more data wasn't given
-        
-//         print_buf((const unsigned char*)buf, read); 
-        
+        if (read > 20) {
+          std::cerr << "Warning: extranious data in ping reply." << std::endl;
+        }
+#endif
         return true;
       }
   };
@@ -242,35 +241,38 @@ namespace query {
       }
       
     protected:
-      /// this function could be generalised for any bytesequence
+      /// \todo this function could be generalised for any bytesequence
       bool read(int socket, bool first_read = false) {
-//         using common::read_type;
-
         if (! common::wait_for_select(socket)) {
-          if (first_read) throw int(1);
+          if (first_read) throw common::timeout_error("timeout reading an info reply");
           return false;
         }
         
-        int read = 0;
         char buf[1400];
-        if ((read = recv(socket, buf, 1400, 0)) == -1) {
-          perror("recv()");
-          throw int(1); /// \todo proper except
-        }
+        int read = common::read_to_buffer(socket, buf, 1400);
         
-        print_buf((const unsigned char *)buf, read);
+        print_buf(buf, read);
         
         /// \todo verify the read size; specifically that it doesn't end before the required fields are done 
         ///       (prolly repeated checking).
         
         /// \todo deal with split packets... somehow?!  Would require breaking in the middle... maybe I 
         ///       could put the whole thing in a loop... what happens if it runs out of data in the middle 
-        ///       of a string tho?
+        ///       of a string tho?  It makes me wonder with these packets... since there's no way to say 
+        ///       "contine at this point next time" it's very difficult to organise... maybe for these 
+        ///       informational packets it simply doesn't happen that there are splits, whereas for something
+        ///       like a steam download naturally there would be but, as a bitstream, it doens't matter because
+        ///       you just append the whole lot minus the known header.  I've got a problem because what I have
+        ///       is essentially all known header!  How does one determine that things were alreday read!?  Where
+        ///       do you append do?!  I think that these just don't make sense and therefore all packets might
+        ///       well be under 1400 bytes for this query interface.
+        
+       
+        
         
         QUERY_DEBUG_MESSAGE("Properties of read:");
         size_t idx = 0;
-        int32_t split_type;
-        common::endian_memcpy(split_type, &buf[idx]);
+        int32_t split_type = common::from_buffer<int32_t>(&buf, idx);
         enum split_type {split_single = -1, split_multiple = -2};
         if (split_type == split_single) {
           QUERY_DEBUG_MESSAGE("  split type: single");
@@ -281,76 +283,42 @@ namespace query {
           /// \todo Handle somehow
         }
         else {
-          throw std::runtime_error("split type invalid");
+          throw common::proto_error("split type invalid");
         }
         
-        idx += sizeof(int32_t);
-        
-        int8_t packet_type;
-        common::endian_memcpy(packet_type, &buf[idx]);
-        if (packet_type != 0x49) throw std::string("wrong packet type flag"); /// \todo proper except
+        /// \todo Should this be 16bit ?
+        int32_t packet_type = common::from_buffer<int32_t>(&buf, idx);
+        if (packet_type != 0x49) throw common::proto_error("wrong packet type flag");
         QUERY_DEBUG_MESSAGE("  packet type: '" << (char) packet_type << "'");
-        idx += sizeof(int8_t);
         
-        int8_t steam_version;
-        common::endian_memcpy(steam_version, &buf[idx]);
+        int8_t steam_version = common::from_buffer<int8_t>(&buf, idx);
         QUERY_DEBUG_MESSAGE("  steam version: " << (int) steam_version);
-        idx += sizeof(int8_t);
         
-        {
-          int start = idx;
-          while (idx < read && buf[idx++] != '\0'); // idx will be on the first char of the next field
-          size_t chrs = idx - start;
-          std::string server_name(&buf[start], chrs);
-          QUERY_DEBUG_MESSAGE("  server name: " << server_name);
-        }
+        std::string server_name = common::from_buffer(buf, idx, read);
+        QUERY_DEBUG_MESSAGE("  server name: " << server_name);
         
-        {
-          int start = idx;
-          while (idx < read && buf[idx++] != '\0');
-          size_t chrs = idx - start;
-          std::string map(&buf[start], chrs);
-          QUERY_DEBUG_MESSAGE("  map: " << map);
-        }
-
-        {
-          int start = idx;
-          while (idx < read && buf[idx++] != '\0');
-          size_t chrs = idx - start;
-          std::string dir_name(&buf[start], chrs);
-          QUERY_DEBUG_MESSAGE("  game dir: " << dir_name);
-        }
+        std::string map = common::from_buffer(buf, idx, read);
+        QUERY_DEBUG_MESSAGE("  map: " << map);
         
-        {
-          int start = idx;
-          while (idx < read && buf[idx++] != '\0');
-          size_t chrs = idx - start;
-          std::string long_name(&buf[start], chrs);
-          QUERY_DEBUG_MESSAGE("  long string: " << long_name);
-        }
+        std::string dir_name = common::from_buffer(buf, idx, read);
+        QUERY_DEBUG_MESSAGE("  game dir: " << dir_name);
         
-        int16_t steam_app_id;
-        common::endian_memcpy(steam_app_id, &buf[idx]);
+        std::string long_name = common::from_buffer(buf, idx, read);
+        QUERY_DEBUG_MESSAGE("  long string: " << long_name);
+        
+        int16_t steam_app_id = common::from_buffer<int16_t>(&buf, idx);
         QUERY_DEBUG_MESSAGE("  steam_app_id: " << (int) steam_version);
-        idx += sizeof(int16_t);
         
-        int8_t num_players;
-        common::endian_memcpy(num_players, &buf[idx]); 
+        int8_t num_players = common::from_buffer<int8_t>(&buf, idx);
         QUERY_DEBUG_MESSAGE("  num_players: " << (int) num_players);
-        idx += sizeof(int8_t);
         
-        int8_t max_players;
-        common::endian_memcpy(max_players, &buf[idx]); 
+        int8_t max_players = common::from_buffer<int8_t>(&buf, idx);
         QUERY_DEBUG_MESSAGE("  max_players: " << (int) max_players);
-        idx += sizeof(int8_t);
         
-        int8_t num_bots;
-        common::endian_memcpy(num_bots, &buf[idx]); 
+        int8_t num_bots = common::from_buffer<int8_t>(&buf, idx);
         QUERY_DEBUG_MESSAGE("  num_bots: " << (int) num_bots);
-        idx += sizeof(int8_t);
         
-        int8_t server_type;
-        common::endian_memcpy(server_type, &buf[idx]);
+        int8_t server_type = common::from_buffer<int8_t>(&buf, idx);
         if (server_type == 'l') {
           QUERY_DEBUG_MESSAGE("  server_type: listen");
         }
@@ -361,12 +329,10 @@ namespace query {
           QUERY_DEBUG_MESSAGE("  server_type: sourcetv");
         }
         else {
-          throw std::string("bad server type.");
+          throw common::proto_error("bad server type.");
         }
-        idx += sizeof(int8_t);
         
-        int8_t os_type;
-        common::endian_memcpy(os_type, &buf[idx]);
+        int8_t os_type = common::from_buffer<int8_t>(&buf, idx);
         if (os_type == 'l') {
           QUERY_DEBUG_MESSAGE("  os_type: linux");
         }
@@ -374,61 +340,37 @@ namespace query {
           QUERY_DEBUG_MESSAGE("  os_type: windows");
         }
         else {
-          throw std::string("bad server os type.");
+          throw common::proto_error("bad server os type.");
         }
-        idx += sizeof(int8_t);
         
-        bool password;
-        common::endian_memcpy(password, &buf[idx]); 
+        bool password = common::from_buffer<int8_t>(&buf, idx) == 1;
         QUERY_DEBUG_MESSAGE("  passworded: " << (int) password);
-        idx += sizeof(int8_t);
         
-        bool vac;
-        common::endian_memcpy(vac, &buf[idx]); 
+        bool vac = common::from_buffer<int8_t>(&buf, idx) == 1;
         QUERY_DEBUG_MESSAGE("  vac: " << (int) vac);
-        idx += sizeof(int8_t);
         
-        {
-          size_t start = idx;
-          while (idx < read && buf[idx++] != '\0');
-          size_t chrs = idx - start;
-          std::string game_vers(&buf[start], chrs);
-          QUERY_DEBUG_MESSAGE("  game version: " << game_vers);
-        }
+        std::string game_vers = common::from_buffer(buf, idx, read);
+        QUERY_DEBUG_MESSAGE("  game_vers: " << game_vers);
         
-        int8_t extra_data;
-        common::endian_memcpy(extra_data, &buf[idx]); 
+        int8_t extra_data = common::from_buffer<int8_t>(&buf, idx);
         QUERY_DEBUG_MESSAGE("  extra_data_flag: " << (int) extra_data);
-        idx += sizeof(int8_t);
         
         if (extra_data & 0x80) {
-          int16_t portno;
-          common::endian_memcpy(portno, &buf[idx]); 
+          int16_t portno = common::from_buffer<int16_t>(&buf, idx);
           QUERY_DEBUG_MESSAGE("  port num: " << portno);
-          idx += sizeof(int16_t);
         }
+        
         if (extra_data & 0x40) {
-          int16_t spect_portno;
-          common::endian_memcpy(spect_portno, &buf[idx]); 
+          int16_t spect_portno = common::from_buffer<int16_t>(&buf, idx);
           QUERY_DEBUG_MESSAGE("  spectator port no: " << spect_portno);
-          idx += sizeof(int16_t);
           
-          {
-            size_t start = idx;
-            while (idx < read && buf[idx++] != '\0');
-            size_t chrs = idx - start;
-            std::string spect_server_name(&buf[start], chrs);
-            QUERY_DEBUG_MESSAGE("  spect_server_name: " << spect_server_name);
-          }
+          std::string spect_server_name = common::from_buffer(buf, idx, read);
+          QUERY_DEBUG_MESSAGE("  spect_server_name: " << spect_server_name);
         }
+        
         if (extra_data & 0x20) {
-          {
-            size_t start = idx;
-            while (idx < read && buf[idx++] != '\0');
-            size_t chrs = idx - start;
-            std::string game_tag(&buf[start], chrs);
-            QUERY_DEBUG_MESSAGE("  game_tag: " << game_tag); 
-          }
+          std::string game_tag = common::from_buffer(buf, idx, read);
+          QUERY_DEBUG_MESSAGE("  game_tag: " << game_tag); 
         }
         
         

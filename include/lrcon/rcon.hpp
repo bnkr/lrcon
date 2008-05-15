@@ -16,6 +16,12 @@ See \ref p_RCON "RCON Protocol" for usage.
       the possiblity that we should make it easier to do this in the API -- the user
       code could know that it will receive a multi-packet sequence and then organise
       its timeouts accordingly.
+
+\todo I could use common::read_to_buffer in here more I think.
+
+\todo Would it be faster to read the entire lot into a buffer and then use endian_memcpy
+      to sort it out?  Perhaps actually it's not such a problem because the packets get
+      concatenated somehow in tcp... or do they... meh it's too late.
 */
 
 
@@ -97,6 +103,7 @@ namespace rcon {
   typedef common::proto_error proto_error;
   typedef common::recv_error recv_error;
   typedef common::send_error send_error;
+  typedef common::timeout_error timeout_error;
   //@}
 
   //! Convenience wrapper class
@@ -167,14 +174,18 @@ namespace rcon {
       bool read(int socket, bool error_on_timeout = true) {
         RCON_DEBUG_MESSAGE("Reading a packet.");
         
-        if (! common::wait_for_select(socket)) {
+        int timeleft = common::wait_for_select(socket);
+        if (timeleft == 0) {
           RCON_DEBUG_MESSAGE("Timeout.");
           if (error_on_timeout) {
-            throw recv_error("timed out before any data was read.");
+            throw timeout_error("timed out before any data was read.");
           }
           else {
             return false;
           }
+        }
+        else if (timeleft == -1) {
+          common::errno_throw<recv_error>("select() failed"); /// \todo different exception?
         }
         
         // Two ints, two strings.
@@ -219,6 +230,8 @@ namespace rcon {
         const int max_payload_size = max_string_length * 2;
         size_t total_payload_size;
         {
+          /// \todo use common::from_buffer here
+          
           // Read the entire rest of the packet
           size -= 2 * sizeof(int32_t);
           
