@@ -16,9 +16,6 @@ See \ref p_RCON "RCON Protocol" for usage.
       the possiblity that we should make it easier to do this in the API -- the user
       code could know that it will receive a multi-packet sequence and then organise
       its timeouts accordingly.
-
-\todo some code can be shared with query, especially the memcpy stuff and endian crap.
-      Or at least I think so.
 */
 
 
@@ -159,7 +156,7 @@ namespace rcon {
       \throws recv_error      failures from recv() and erroneus timeouts.
       \throws response_error  the command id was not one of command_id_t
 
-      \param first_read  causes an recv_error if there is a timeout.
+      \param error_on_timeout  causes an recv_error if there is a timeout.
       
       \returns \c true if there is more to read; \c false otherwise.
       
@@ -167,12 +164,12 @@ namespace rcon {
                payload is full up.  This is not documented and actually rather
                hard to test since servers very rarely return split-packets.
       */
-      bool read(int socket, bool first_read = true) {
+      bool read(int socket, bool error_on_timeout = true) {
         RCON_DEBUG_MESSAGE("Reading a packet.");
         
         if (! common::wait_for_select(socket)) {
           RCON_DEBUG_MESSAGE("Timeout.");
-          if (first_read) {
+          if (error_on_timeout) {
             throw recv_error("timed out before any data was read.");
           }
           else {
@@ -186,31 +183,37 @@ namespace rcon {
         const size_t min_packet_size = sizeof(int32_t) * 2 + 1 + 1;
         
         int32_t size;
-        if (common::read_type(socket, size) == common::read_type_error) 
-          throw recv_error(std::string("recv() failed for size: ") + strerror(errno));
+        if (common::read_type(socket, size) == common::read_type_error) {
+          common::errno_throw<recv_error>("recv() failed for size");
+        }
         
         if ((size < min_packet_size) || (size > max_packet_size)) {
           throw recv_error("invalid data size.");
         }
         
-        if (common::read_type(socket, recvd_request_id_) == common::read_type_error) 
-          throw recv_error(std::string("recv() failed for request_id: ") + strerror(errno));
-          
-        int32_t t;
-        if (common::read_type(socket, t) == common::read_type_error) 
-          throw recv_error(std::string("recv() failed for command_id: ") + strerror(errno));
-        
-        RCON_DEBUG_MESSAGE("Properties of read: ");
-        RCON_DEBUG_MESSAGE("  Initial size: " << size);
-        RCON_DEBUG_MESSAGE("  Request id: " << recvd_request_id_);
-        RCON_DEBUG_MESSAGE("  Command id: " << t);
-        
-        if (t == command_base::auth_request || t == command_base::auth_response ||
-            t == command_base::exec_request || t == command_base::exec_response) {
-          command_id_ = t;
+        if (common::read_type(socket, recvd_request_id_) == common::read_type_error) {
+          common::errno_throw<recv_error>("recv() failed for request_id");
         }
-        else {
-          throw response_error("received an invalid command id.");
+          
+        {
+          // ensure t is actually a valid member of the enum before assigning it
+          int32_t t;
+          if (common::read_type(socket, t) == common::read_type_error) {
+            common::errno_throw<recv_error>("recv() failed for command_id");
+          }
+          
+          RCON_DEBUG_MESSAGE("Properties of read: ");
+          RCON_DEBUG_MESSAGE("  Initial size: " << size);
+          RCON_DEBUG_MESSAGE("  Request id: " << recvd_request_id_);
+          RCON_DEBUG_MESSAGE("  Command id: " << t);
+          
+          if (t == command_base::auth_request || t == command_base::auth_response ||
+              t == command_base::exec_request || t == command_base::exec_response) {
+            command_id_ = t;
+          }
+          else {
+            throw response_error("received an invalid command id.");
+          }
         }
         
         const int max_payload_size = max_string_length * 2;
@@ -227,7 +230,7 @@ namespace rcon {
           while (size > 0) {
             int bytes = -1;
             if ((bytes = recv(socket, &buf[idx], size, 0)) == -1) {
-              throw recv_error(std::string("recv() failed for stringdata: ") + strerror(errno));
+              common::errno_throw<recv_error>("recv() failed for stringdata");
             }
             
             size -= bytes; 
@@ -265,26 +268,26 @@ namespace rcon {
         RCON_DEBUG_MESSAGE("Data sending properties: ");
         RCON_DEBUG_MESSAGE("  Packet: " << size);
         if (common::send_type(socket, size) == common::send_type_error) {
-          throw send_error(std::string("error sending size: ") + strerror(errno));
+          common::errno_throw<send_error>("error sending size");
         }
         
         RCON_DEBUG_MESSAGE("  Request id: " << send_request_id_);
         if (common::send_type(socket, send_request_id_) == common::send_type_error) {
-          throw send_error(std::string("error sending request_id: ") + strerror(errno));
+          common::errno_throw<send_error>("error sending request_id");
         }
         
         RCON_DEBUG_MESSAGE("  Command id: " << command_id_);
         if (common::send_type(socket, command_id_) == common::send_type_error) {
-          throw send_error(std::string("error sending command_id: ") + strerror(errno));
+          common::errno_throw<send_error>("error sending command_id");
         }
         
         RCON_DEBUG_MESSAGE("  Payload: '" << payload_ << "'");
         if (send(socket, payload_.c_str(), payload_.length() + 1, 0) == -1) {
-          throw send_error(std::string("error sending payload: ") + strerror(errno));
+          common::errno_throw<send_error>("error sending payload");
         }
 
         if (common::send_type(socket, '\0') ==  common::send_type_error) {
-          throw send_error(std::string("error sending terminating null: ") + strerror(errno));
+          common::errno_throw<send_error>("error sending terminating null");
         }
       }
   };

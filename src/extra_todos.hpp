@@ -44,9 +44,6 @@
       Perhaps I could invent an eventscript which would return a massive ammount 
       of data (where massive >= max_payload).
 
-\todo Better error messages for the return values of C functions -- maybe do some string
-      getting... strerror, gai_error etc.
-
 \todo I should test fringe values for the sizes of the strings, because there's a bad
       performance case when read_data == max_data but no more packets are coming.  It's
       quite unlikely, but I should test anyway.  Hopefully the server will actually say 

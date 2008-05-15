@@ -71,7 +71,7 @@ void print_endian(int bs, size_t sz = sizeof(int)) {
 printf("%c %02X\n", c, c);
              }
              
-
+             
 
 namespace query {
   namespace {
@@ -115,8 +115,7 @@ namespace query {
     inline int send_buffered_packet(int socket, const unsigned char *pkt, size_t sz) {
       int sent_bytes;
       if ((sent_bytes = send(socket, pkt, sz, 0)) == -1) {
-        perror("send()");
-        throw std::runtime_error("send() failed"); /// \todo proper except
+        common::errno_throw<std::runtime_error>("send() failed");
       }
       return sent_bytes;
     }

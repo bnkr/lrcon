@@ -8,7 +8,6 @@
 #ifndef COMMON_HPP_y3dykfiu
 #define COMMON_HPP_y3dykfiu
 
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -29,7 +28,6 @@
 #else
 #  define COMMON_DEBUG_MESSAGE(x__)
 #endif
-
 
 /*!
 \def RCON_SYS_LITTLE_ENDIAN  
@@ -117,6 +115,12 @@ namespace common {
     ~proto_error() throw() {}
   };
   
+  //! Throw given exception using errno to get a message
+  template <typename Exception>
+  void errno_throw(const char *message) {
+    throw Exception(std::string(message) + ": " + strerror(errno));
+  }
+  
   /*!
   \brief Take care of DNS and so on.  Prefer to use sub-classes.
 
@@ -170,7 +174,6 @@ namespace common {
   
         int r;
         if ((r = getaddrinfo(host, port, &hints, &ad_info)) != 0) {
-          std::cerr << "gettaddrinfo(): " << gai_strerror(r) << std::endl;
           throw connection_error(std::string("gettaddrinfo() failed: ") + gai_strerror(r));
         }
         
@@ -220,11 +223,11 @@ namespace common {
         COMMON_DEBUG_MESSAGE("Initialising sockets.");
         socket_ = ::socket(server.family(), server.type(), 0);
         if (socket_ == -1) {
-          throw connection_error(std::string("socket() failed: ") + strerror(errno));
+          errno_throw<connection_error>("socket() failed");
         }
         
         if (connect(socket_, server.address(), server.address_len()) == -1) {
-          throw connection_error(std::string("connect() failed: ") + strerror(errno));
+          errno_throw<connection_error>("connect() failed");
         }
         
         COMMON_DEBUG_MESSAGE("Got sockets.");
@@ -239,9 +242,10 @@ namespace common {
       //! Necessary to be public for the message types to call it but not the user.
       int socket() { return socket_; }
   };
-
   
   //! True if no timeout.  False otherwise.  Time values are offsets.
+  //! \todo this should return -1 for error; otherwise it is indistinguishable -- not 
+  //!       sure if that borks anything yet tho.
   inline bool wait_for_select(int socket_fd, int seconds = 1, int usecs = 0) {
     fd_set rfds;
     FD_ZERO(&rfds);
@@ -312,7 +316,7 @@ namespace common {
   }
 #endif
   
-  //! for convenience and readaility
+  //! For convenience and readaility
   const int read_type_error = -1;
   const int send_type_error = -1;
   
