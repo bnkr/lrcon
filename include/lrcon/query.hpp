@@ -52,7 +52,8 @@ namespace query {
 
   //! Non-instanciable base class for request types.
   class query_base {
-    const size_t max_packet_size = 1400;
+    protected:
+      static const size_t max_packet_size = 1400;
   };
   
   

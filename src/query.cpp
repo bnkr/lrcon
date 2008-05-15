@@ -165,7 +165,7 @@ namespace query {
         send_buffered_packet(conn.socket(), pkt_ping, sizeof(pkt_ping));
         
         int timeleft = common::wait_for_select(conn.socket(), timeout);
-         if (timeleft == common::wait_for_select_error) {
+        if (timeleft == common::wait_for_select_error) {
           common::errno_throw<common::recv_error>("select() failed"); /// \todo different exception?
         }
         else if (timeleft == common::wait_for_select_timeout) {
@@ -251,7 +251,7 @@ namespace query {
           return false;
         }
         else if (r == common::wait_for_select_error) {
-          errno_throw<recv_error>("select() failed");
+          common::errno_throw<common::recv_error>("select() failed");
         }
 
         
@@ -424,18 +424,21 @@ namespace query {
       void read(int socket) {
         QUERY_DEBUG_MESSAGE("Reading:");
         
+        using common::read_to_buffer;
+        using common::from_buffer;
+        
         int t = common::wait_for_select(socket);
         if (t == common::wait_for_select_timeout) {
           throw common::timeout_error("timed out reading");
         }
         else if (t == common::wait_for_select_error) {
-          commom::errno_throw<recv_error>("select() failed");
+          common::errno_throw<common::recv_error>("select() failed");
         }
         
         char buff[max_packet_size];
         int bytes = read_to_buffer(socket, buff, max_packet_size, "failed reading challenge packet");
         if (bytes != sizeof(int32_t) + sizeof(int8_t) + sizeof(int32_t)) {
-          throw std::proto_error("invalid packet received");
+          throw common::proto_error("invalid packet received");
         }
         
 

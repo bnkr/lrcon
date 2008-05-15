@@ -175,7 +175,7 @@ namespace rcon {
         RCON_DEBUG_MESSAGE("Reading a packet.");
         
         int timeleft = common::wait_for_select(socket);
-        if (timeleft == wait_for_select_timeout) {
+        if (timeleft == common::wait_for_select_timeout) {
           RCON_DEBUG_MESSAGE("Timeout.");
           if (error_on_timeout) {
             throw timeout_error("timed out before any data was read.");
@@ -184,7 +184,7 @@ namespace rcon {
             return false;
           }
         }
-        else if (timeleft == wait_for_select_error) {
+        else if (timeleft == common::wait_for_select_error) {
           common::errno_throw<recv_error>("select() failed"); /// \todo different exception?
         }
         
