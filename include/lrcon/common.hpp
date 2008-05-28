@@ -14,8 +14,6 @@
 
 #include <endian.h>
 
-#include <cerrno>
-#include <cstring>
 #include <cassert>
 #include <cerrno>
 #include <cstring>
@@ -48,11 +46,12 @@ order is swapped transparently.
 #  define LRCON_SYS_LITTLE_ENDIAN
 #endif
 
-//! \brief This is only used internally, but some docs are relevant.
-//! 
-//! Components which are not specific to a particular part of the lib.
+/*! 
+\brief This is only used internally, but some docs are relevant.
+
+Components which are not specific to a particular part of the lib.
+*/
 namespace common {
-  //! When connect or getaddrinfo or socket fails...
   //! Catch-all error class.
   struct error : public std::runtime_error {
     error(const std::string &s) : std::runtime_error(s) {}
@@ -120,6 +119,7 @@ namespace common {
     proto_error(const std::string &s) : network_error(s) {}
     ~proto_error() throw() {}
   };
+  
   
   //! Throw given exception using errno to get a message
   template <typename Exception>

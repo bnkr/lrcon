@@ -2,6 +2,9 @@
 SUBDIRS = src include 
 EXTRA_DIST = docs Doxyfile.dev-dotty examples
 
+# Necessary or it won't notice the extra scripts
+ACLOCAL_AMFLAGS = -I build-aux
+
 # So that dox are built before distribution, as well as letting the user
 # rebuild them.
 dist-hook:	doxygen

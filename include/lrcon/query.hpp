@@ -54,6 +54,7 @@ namespace query {
   class query_base {
     protected:
       static const size_t max_packet_size = 1400;
+      enum split_type {split_single = -1, split_multiple = -2};
   };
   
   

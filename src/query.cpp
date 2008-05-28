@@ -34,7 +34,30 @@
 - timeouts: sometimes we know how many packets, or at least the user might.  We do not want
   to have to wait for packets every time!  So the todo
 
+\todo Header reading code is identical pretty much everywhere.  
+
+\todo Header reading should verify the read size; specifically that it doesn't end before 
+      the required fields are done
+
 */
+
+        /// \todo deal with split packets... somehow?!  Would require breaking in the middle... maybe I 
+        ///       could put the whole thing in a loop... what happens if it runs out of data in the middle 
+        ///       of a string tho?  It makes me wonder with these packets... since there's no way to say 
+        ///       "contine at this point next time" it's very difficult to organise... maybe for these 
+        ///       informational packets it simply doesn't happen that there are splits, whereas for something
+        ///       like a steam download naturally there would be but, as a bitstream, it doens't matter because
+        ///       you just append the whole lot minus the known header.  I've got a problem because what I have
+        ///       is essentially all known header!  How does one determine that things were alreday read!?  Where
+        ///       do you append do?!  I think that these just don't make sense and therefore all packets might
+        ///       well be under 1400 bytes for this query interface.
+
+        /// this is again a problem with multipackets.  How do I preserve which var I'm  writing to?
+        /// What about reading it all into one big buffer and sorting it out later?  Out of order 
+        /// packets problem tho...  Of course this is all asuming that hte data would just cut out
+        /// and the fields are not aligned for you.  I need to test this stuff.  I guess the rules 
+        /// one would be a good place to start -- probly more than 1400 bytes.  How does phprcon deal
+        /// with it?  I guess maybe it doesnt seeing as it's so old.
 
 
 
@@ -67,11 +90,6 @@ void print_endian(int bs, size_t sz = sizeof(int)) {
 #include <ctime>
 #define trc(thing__) std::cout << thing__ << std::endl;
 
-             void prthex(char c) {
-printf("%c %02X\n", c, c);
-             }
-             
-             
 
 namespace query {
   namespace {
@@ -115,7 +133,7 @@ namespace query {
     inline int send_buffered_packet(int socket, const unsigned char *pkt, size_t sz) {
       int sent_bytes;
       if ((sent_bytes = send(socket, pkt, sz, 0)) == -1) {
-        common::errno_throw<std::runtime_error>("send() failed");
+        common::errno_throw<common::send_error>("send() failed");
       }
       return sent_bytes;
     }
@@ -166,7 +184,7 @@ namespace query {
         
         int timeleft = common::wait_for_select(conn.socket(), timeout);
         if (timeleft == common::wait_for_select_error) {
-          common::errno_throw<common::recv_error>("select() failed"); /// \todo different exception?
+          common::errno_throw<common::recv_error>("select() failed");
         }
         else if (timeleft == common::wait_for_select_timeout) {
           QUERY_DEBUG_MESSAGE("Timeout.");
@@ -239,7 +257,7 @@ namespace query {
       info(common::connection_base &conn) {
         QUERY_DEBUG_MESSAGE("Sending info packet.");
         send_buffered_packet(conn.socket(), pkt_info, sizeof(pkt_info));
-        read_all(conn.socket());
+        read(conn.socket());
       }
       
     protected:
@@ -254,33 +272,13 @@ namespace query {
           common::errno_throw<common::recv_error>("select() failed");
         }
 
-        
         char buf[max_packet_size];
         int read = common::read_to_buffer(socket, buf, max_packet_size);
-        
         print_buf(buf, read);
-        
-        /// \todo verify the read size; specifically that it doesn't end before the required fields are done 
-        ///       (prolly repeated checking).
-        
-        /// \todo deal with split packets... somehow?!  Would require breaking in the middle... maybe I 
-        ///       could put the whole thing in a loop... what happens if it runs out of data in the middle 
-        ///       of a string tho?  It makes me wonder with these packets... since there's no way to say 
-        ///       "contine at this point next time" it's very difficult to organise... maybe for these 
-        ///       informational packets it simply doesn't happen that there are splits, whereas for something
-        ///       like a steam download naturally there would be but, as a bitstream, it doens't matter because
-        ///       you just append the whole lot minus the known header.  I've got a problem because what I have
-        ///       is essentially all known header!  How does one determine that things were alreday read!?  Where
-        ///       do you append do?!  I think that these just don't make sense and therefore all packets might
-        ///       well be under 1400 bytes for this query interface.
-        
-       
-        
         
         QUERY_DEBUG_MESSAGE("Properties of read:");
         size_t idx = 0;
         int32_t split_type = common::from_buffer<int32_t>(&buf, idx);
-        enum split_type {split_single = -1, split_multiple = -2};
         if (split_type == split_single) {
           QUERY_DEBUG_MESSAGE("  split type: single");
         }
@@ -391,17 +389,19 @@ namespace query {
         
         return true;
       }
+#if 0
+// atm I don't want to mess with this but I'm not removing it because it might be good
+// for doing splitpackets.
       
       /// if I put this in the parent and call it from the self::constructor would
       /// it still work?  don;'t think so
       void read_all(int socket) {
-        /// this is totally duplicated from rcon (but it might be expanded to deal with
-        /// multipackets)
         bool more = read(socket, true);
         while (more) {
           more = read(socket, false);
         }
       }
+#endif
   };
 
   //! \brief Get the challenge number for use in players and rules queries.
@@ -441,8 +441,6 @@ namespace query {
           throw common::proto_error("invalid packet received");
         }
         
-
-        
         size_t idx = 0;
         int32_t type = from_buffer<int32_t>(buff, idx);
         QUERY_DEBUG_MESSAGE("  type: " << type);
@@ -451,22 +449,16 @@ namespace query {
         QUERY_DEBUG_MESSAGE("  flag: " << (char) flag);
         if (flag != 0x41) throw common::proto_error("bad packet flag in challenge response");
         
-        memcpy(&this->challenge_num_, &buff[5], sizeof(int32_t)); // don't convert endianness
+        memcpy(&this->challenge_num_, &buff[idx], sizeof(int32_t)); // don't convert endianness
         QUERY_DEBUG_MESSAGE("  challenge_num: " << challenge_num_);
-        
-        /// \todo Could I check that there is more data without having a huge timeout wait period?
       }
   };
   
-    //////////////////////////////////////////////////////
-    /// NOTE: I stopped updatng the code at this point ///
-    //////////////////////////////////////////////////////
+
   
   
   //! \brief List of players on the server
   class players : public dynamic_packet {
-    /// this class is identical to rules
-    
     int32_t challenge_no_;
     
     public:
@@ -488,78 +480,53 @@ namespace query {
       }
       
       void read(int socket) {
-        /// \todo need to organise multipackets here.
+        using common::from_buffer;
         
         QUERY_DEBUG_MESSAGE("Receiving players data:");
-        char buff[1400];
-        int bytes;
-        do {
-          bytes = recv(socket, buff, 1400, 0);
-          if (bytes == -1) {
-            perror("recv()");
-            throw std::runtime_error("failed recv");
-          }
+        char buff[max_packet_size];
+        int bytes = common::read_to_buffer(socket, buff, max_packet_size);
+        
+        size_t idx = 0;
+        int32_t split_type = from_buffer<int32_t>(buff, idx);
+        if (split_type == split_single) {
+          QUERY_DEBUG_MESSAGE("  split type: packet");
+        }
+        else if (split_type == split_multiple) {
+          QUERY_DEBUG_MESSAGE("  split type: split");
+        }
+        else {
+          throw common::proto_error("reieved invalid split type.");
+        }
+        
+        int8_t type = from_buffer<int8_t>(buff, idx);
+        QUERY_DEBUG_MESSAGE("  packet type: " << (char) type);
+        if (type != 0x44) throw common::proto_error("invalid packet type field");
+        
+        // now a list of players
+        while (idx < bytes) {
+          int8_t player_num = from_buffer<int8_t>(buff, idx);
+          QUERY_DEBUG_MESSAGE("  player num: " << (int) player_num);
           
-          size_t idx = 0;
-          int32_t split_type;
-          common::endian_memcpy(split_type, &buff[idx]);
-          //! \todo use constants for the split types
-          if (split_type == -1) {
-            QUERY_DEBUG_MESSAGE("  split type: packet");
-          }
-          else if (split_type == -2) {
-            QUERY_DEBUG_MESSAGE("  split type: split");
-            /// \todo handle split types (somehow!)
-          }
-          else {
-            throw std::runtime_error("reieved invalid split type."); /// \todo proper execption
-          }
-          idx += sizeof(int32_t);
+          std::string player_name = from_buffer(buff, idx, bytes);
+          QUERY_DEBUG_MESSAGE("  player name: " << player_name);
           
-          int8_t type;
-          common::endian_memcpy(type, &buff[idx]);
-          QUERY_DEBUG_MESSAGE("  packet type: " << (char) type);
-          if (type != 0x44) throw std::runtime_error("invalid packet type field"); /// \todo proper exception
-          idx += sizeof(int8_t);
-          
-          // now a list of players
-          while (idx < bytes) {
-            /// \todo could I encapsulate this code somewhere?  Declare var, copy, advance index... it's very
-            ///       necessary because it's easy to forget to advance the buffer pointer.
-            int8_t player_num;
-            common::endian_memcpy(player_num, &buff[idx]);
-            idx += sizeof(int8_t);
-            QUERY_DEBUG_MESSAGE("  player num: " << (int) player_num);
-            
-            ///! \todo This string reading code is also duplicated
-            size_t start = idx;
-            while (idx < bytes && buff[idx++] != '\0');
-            size_t numchrs = idx - start;
-            std::string player_name(&buff[start], numchrs);
-            QUERY_DEBUG_MESSAGE("  player name: " << player_name);
-            
-            int32_t kills;
-            common::endian_memcpy(kills, &buff[idx]);
-            idx += sizeof(int32_t);
-            QUERY_DEBUG_MESSAGE("  kills: " << kills);
-                
-            /// \todo How do I handle endianness?  How do I make it sure that it's a 32bit float?
-            float connect_time;
-            common::endian_memcpy(connect_time, &buff[idx]);
-            idx += sizeof(float);
-            QUERY_DEBUG_MESSAGE("  connect time: " << connect_time);
-          }
-          
-          /// ok there's a problem here.  Seems that it just replies with the 
-          /// challenge number again.  You can tell because the type is set to 0x41
-          
-          std::cout << "Message received (" << bytes << " bytes): " << std::endl;
-          print_buf(buff, bytes);
-        } while (common::wait_for_select(socket));
+          int32_t kills = from_buffer<int32_t>(buff, idx);
+          QUERY_DEBUG_MESSAGE("  kills: " << kills);
+              
+          /// \todo How do I handle endianness?  How do I make it sure that it's a 32bit float?
+          float connect_time = from_buffer<float>(buff, idx);
+          QUERY_DEBUG_MESSAGE("  connect time: " << connect_time);
+        }
+        
+        std::cout << "Message received (" << bytes << " bytes): " << std::endl;
+        print_buf(buff, bytes);
       }
   };
   
-  /// \todo this is completely unfinished
+    //////////////////////////////////////////////////////
+    /// NOTE: I stopped updatng the code at this point ///
+    //////////////////////////////////////////////////////
+  
   //! \brief List of some server vars.
   class rules : public dynamic_packet {
     int32_t challenge_no_;
@@ -582,76 +549,47 @@ namespace query {
       }
       
       void read(int socket) {
-        /// this is again a problem with multipackets.  How do I preserve which var I'm  writing to?
-        /// What about reading it all into one big buffer and sorting it out later?  Out of order 
-        /// packets problem tho...  Of course this is all asuming that hte data would just cut out
-        /// and the fields are not aligned for you.  I need to test this stuff.  I guess the rules 
-        /// one would be a good place to start -- probly more than 1400 bytes.  How does phprcon deal
-        /// with it?  I guess maybe it doesnt seeing as it's so old.
+        using common::from_buffer;
         
         QUERY_DEBUG_MESSAGE("Receiving rules data");
-        char buff[1400];
-        int bytes;
-        do {
-          //! \todo this code for the packet header is duplicated virtually everywhere
-          bytes = recv(socket, buff, 1400, 0);
-          if (bytes == -1) {
-            perror("recv()");
-            throw std::runtime_error("failed recv");
-          }
+        char buff[max_packet_size];
+        int bytes = common::read_to_buffer(socket, buff, max_packet_size);
+        
+        //! \todo this code for the packet header is duplicated virtually everywhere
+        
+        //! \todo duplicated split header reading here
+        size_t idx = 0;
+        int32_t split_type = from_buffer<int32_t>(buff, idx);;
+        if (split_type == split_single) {
+          QUERY_DEBUG_MESSAGE("  split type: single");
+        }
+        else if (split_type == split_multiple) {
+          QUERY_DEBUG_MESSAGE("  split type: split");
+        }
+        else {
+          throw common::proto_error("reieved invalid split type."); /// \todo proper execption
+        }
+        
+        int8_t type = from_buffer<int8_t>(buff, idx);
+        QUERY_DEBUG_MESSAGE("  packet type: " << (char) type);
+        if (type != 0x45) throw common::proto_error("wrong packet type received.");
+        
+        int16_t num_rules = from_buffer<int16_t>(buff, idx);
+        QUERY_DEBUG_MESSAGE("  num rules: " << (int) num_rules);
+        
+        int rules_read = 0;
+        while (idx < bytes) {
+          std::string key = from_buffer(buff, idx, bytes);
+          std::string value = from_buffer(buff, idx, bytes);
           
-          //! \todo duplicated split header reading here
-          size_t idx = 0;
-          int32_t split_type;
-          common::endian_memcpy(split_type, &buff[idx]);
-          //! \todo use constants for the split types
-          if (split_type == -1) {
-            QUERY_DEBUG_MESSAGE("  split type: single");
-          }
-          else if (split_type == -2) {
-            QUERY_DEBUG_MESSAGE("  split type: split");
-            /// \todo handle split types (somehow!)
-          }
-          else {
-            throw std::runtime_error("reieved invalid split type."); /// \todo proper execption
-          }
-          idx += sizeof(int32_t);
-          
-          int8_t type;
-          common::endian_memcpy(type, &buff[idx]);
-          idx += sizeof(int8_t);
-          QUERY_DEBUG_MESSAGE("  packet type: " << (char) type);
-          if (type != 0x45) throw std::runtime_error("wrong packet type received.");
-          
-          int16_t num_rules;
-          common::endian_memcpy(num_rules, &buff[idx]);
-          idx += sizeof(int16_t);
-          QUERY_DEBUG_MESSAGE("  num rules: " << (int) num_rules);
-
-          
-          size_t start, numchrs;
-          int rules_read = 0;
-          while (idx < bytes) {
-            /// \todo duplicated string reading code
-            start = idx;
-            while (idx < bytes && buff[idx++] != '\0');
-            numchrs = idx - start;
-            std::string key(&buff[start], numchrs);
-            
-            start = idx;
-            while (idx < bytes && buff[idx++] != '\0');
-            numchrs = idx - start;
-            std::string value(&buff[start], numchrs);
-            
-            QUERY_DEBUG_MESSAGE("    " << key << " = " << value);
-            ++rules_read;
-          }
-          
-          if (rules_read != num_rules) std::cerr << "Warning: didn't read the right number of rules." << std::endl;
-          
-          
+          QUERY_DEBUG_MESSAGE("    " << key << " = " << value);
+          ++rules_read;
+        }
+        
+        if (rules_read != num_rules) std::cerr << "Warning: didn't read the right number of rules." << std::endl;
+        
+        
 //           print_buf(buff, bytes);
-        } while (common::wait_for_select(socket));
       }
   };
   
@@ -765,5 +703,5 @@ I dunno why it gave me all this useless shit.  Seems it never gets used.
   // packet number, right?
   
   
-*****/
+***/
 

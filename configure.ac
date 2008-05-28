@@ -3,6 +3,8 @@
 
 AC_PREREQ(2.61)
 AC_INIT([lrcon], [0.5])
+# extra stuff for building
+AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([-Wall -Werror])
 
 # Checks for programs.
@@ -33,6 +35,7 @@ AC_TYPE_UINT32_T
 # Checks for library functions.
 AC_FUNC_SELECT_ARGTYPES
 AC_CHECK_FUNCS([select socket getaddrinfo])
+AC_CHECK_FUNCS([strerror])
 
 # Options
 
@@ -58,7 +61,8 @@ if test x$enableval != xno ; then
 fi
 AC_SUBST([QUERY_DEBUG_FLAGS])
 
-
+## magic to make qt work (autotroll package)
+AT_WITH_QT
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
