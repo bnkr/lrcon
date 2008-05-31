@@ -18,7 +18,7 @@ AC_LANG(C++)
 # Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS([cassert cerrno cstdio cstdlib cstring ctime endian.h iostream stdexcept string])
-AC_CHECK_HEADERS([arpa/inet.h netinet/in.h sys/socket.h unistd.h netdb.h sys/time.h])
+AC_CHECK_HEADERS([arpa/inet.h netinet/in.h sys/socket.h unistd.h netdb.h sys/time.h winsock.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE

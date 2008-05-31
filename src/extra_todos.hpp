@@ -48,4 +48,7 @@
       performance case when read_data == max_data but no more packets are coming.  It's
       quite unlikely, but I should test anyway.  Hopefully the server will actually say 
       something about it.
+
+\todo Check the autoconf docs for info on endianness --- I'm pretty sure you can 
+      check it at configure-time (portably also)
 */

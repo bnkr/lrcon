@@ -1,0 +1,10 @@
+./configure --host=i586-mingw32msvc && make clean && make
+
+The host seems directly related to the names of the cross-compilers that are installed.
+Configure fails to detect anything else anyway.
+
+Seems to do it... blowed if I can actually make it compile though ^^.  Maybe cygwin is 
+a better choice.  I would also need the full source of windows stuff for qt4, and 
+presumably the dlls... bleh.  I'd rather link it on windows somehow.  Must be a pain
+though.
+

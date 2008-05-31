@@ -80,11 +80,11 @@ void print_endian(int bs, size_t sz = sizeof(int)) {
 }
 
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
+// #include <sys/types.h>
+// #include <sys/socket.h>
+// #include <netinet/in.h>
+// #include <arpa/inet.h>
+// #include <netdb.h>
 
 #include <cstring>
 #include <ctime>
@@ -130,9 +130,11 @@ namespace query {
     
     
     //! Helper function to send some arbitrary static data.
+    //! \todo this should be in common
     inline int send_buffered_packet(int socket, const unsigned char *pkt, size_t sz) {
       int sent_bytes;
-      if ((sent_bytes = send(socket, pkt, sz, 0)) == -1) {
+      // cast for windows compatability
+      if ((sent_bytes = send(socket, (char *)pkt, sz, 0)) == -1) {
         common::errno_throw<common::send_error>("send() failed");
       }
       return sent_bytes;

@@ -30,12 +30,6 @@ See \ref p_RCON "RCON Protocol" for usage.
 
 #include <lrcon/common.hpp>
 
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-
 #include <cassert>
 #include <cstring>
 #include <cerrno>

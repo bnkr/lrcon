@@ -23,8 +23,9 @@
 
 # See autotroll.m4 :)
 
-
-SUFFIXES = .moc.cpp .moc.cc .moc.cxx .moc.C .h .hh \
+# bunker: added .hpp stuff here -- don't know if it makes a difference 
+# but hey
+SUFFIXES = .moc.cpp .moc.cc .moc.cxx .moc.C .moc.hpp .h .hh .hpp \
            .ui .ui.h .ui.hh \
            .qrc .qrc.cpp .qrc.cc .qrc.cxx .qrc.C
 
@@ -36,20 +37,28 @@ SUFFIXES = .moc.cpp .moc.cc .moc.cxx .moc.C .h .hh \
 	$(MOC) $(QT_CPPFLAGS) $< -o $@
 .h.moc.cpp:
 	$(MOC) $(QT_CPPFLAGS) $< -o $@
+.hpp.moc.cpp:
+	$(MOC) $(QT_CPPFLAGS) $< -o $@
 
 .hh.moc.cc:
 	$(MOC) $(QT_CPPFLAGS) $< -o $@
 .h.moc.cc:
+	$(MOC) $(QT_CPPFLAGS) $< -o $@
+.hpp.moc.cc:
 	$(MOC) $(QT_CPPFLAGS) $< -o $@
 
 .hh.moc.cxx:
 	$(MOC) $(QT_CPPFLAGS) $< -o $@
 .h.moc.cxx:
 	$(MOC) $(QT_CPPFLAGS) $< -o $@
+.hpp.moc.cxx:
+	$(MOC) $(QT_CPPFLAGS) $< -o $@
 
 .hh.moc.C:
 	$(MOC) $(QT_CPPFLAGS) $< -o $@
 .h.moc.C:
+	$(MOC) $(QT_CPPFLAGS) $< -o $@
+.hpp.moc.C:
 	$(MOC) $(QT_CPPFLAGS) $< -o $@
 
 # --- #
@@ -60,6 +69,9 @@ SUFFIXES = .moc.cpp .moc.cc .moc.cxx .moc.C .h .hh \
 	$(UIC) $< -o $@
 
 .ui.ui.h:
+	$(UIC) $< -o $@
+
+.ui.ui.hpp:
 	$(UIC) $< -o $@
 
 # --- #

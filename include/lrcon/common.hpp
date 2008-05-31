@@ -5,14 +5,52 @@
 \brief Containing the entire \link common \endlink namespace.
 */
 
+/// \todo Is it nicer to have wait_for_select, read and co. in the connection
+///       datatype.  Then we just always work with this connection?  Better for
+///       a lib maybe, of course, the read<T> type functions are nice for reading
+///       from an arbitrary buffer anyway.  If it happens the other way then it
+///       could be made ostream like.  Lots more stuff needs to be parameterised
+///       for the lib anyway so the current design is prolly ok.  Also, these
+///       atributes like type() should be hidden; host is more like an opaque
+///       type.
+
 #ifndef COMMON_HPP_y3dykfiu
 #define COMMON_HPP_y3dykfiu
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
+// #include <sys/types.h>
+// #include <sys/socket.h>
+// #include <netdb.h>
 
+#include <config.h>
+
+/// stuffs on win vs. unix: http://tangentsoft.net/wskfaq/articles/bsd-compatibility.html
+
+/// \todo WSAGetLastError() is needed to get errno; also the actual numbers are different (but gai_strerror would work 
+///       (not threadsafe aparently))
+
+/// \todo This whole portability segment is messed.
+
+#ifdef HAVE_WINSOCK_H
+#define LRCON_WINDOWS
+#endif 
+
+#ifdef LRCON_WINDOWS
+// there is no getaddrinfo etc. until winxp [later there might be portable wrappers in mingw]
+// #  define WINVER WindowsXP /* <-- doesn't work ?! */
+#  define _WIN32_WINNT 0x501 /* this isn't the right way to do it! */
+#  include <winsock2.h>
+#  include <ws2tcpip.h>
+#else
+#  include <sys/types.h>
+#  include <sys/socket.h>
+#  include <netinet/in.h>
+#  include <arpa/inet.h>
+#  include <netdb.h>
+#endif
+
+#ifdef HAVE_ENDIAN_H
 #include <endian.h>
+#endif
 
 #include <cassert>
 #include <cerrno>
@@ -127,6 +165,26 @@ namespace common {
     throw Exception(std::string(message) + ": " + strerror(errno));
   }
   
+#ifdef LRCON_WINDOWS
+  inline int winsock_init_func() {
+    static WSADATA w;
+    static bool done = false;
+    if (! done) {
+      int error = WSAStartup (0x0202, &w);   // Fill in w
+  
+      if (error) { // there was an error
+        // do something?!
+      }
+      if (w.wVersion != 0x0202) { // wrong WinSock version!
+        WSACleanup(); // unload ws2_32.dll
+      }
+      done = true;;
+      return error;
+    }
+    return true;
+  }
+#endif
+  
   /*!
   \brief Take care of DNS and so on.  Prefer to use sub-classes.
 
@@ -158,6 +216,9 @@ namespace common {
       \param attr  Bitmask of options from host_attr_t.  Defaults to tcp if nothing is set.
       */
       host(const char *host, const char *port, int attr = host::tcp) {
+#ifdef LRCON_WINDOWS
+        winsock_init_func();
+#endif
         COMMON_DEBUG_MESSAGE("Host is: " << host << ":" << port << " a:" << attr);
         
         struct addrinfo hints;
@@ -170,7 +231,11 @@ namespace common {
         else {
           hints.ai_socktype = SOCK_STREAM;
         }
+        hints.ai_flags = 0;
+        // win doesn't appear to have this
+#ifndef LRCON_WINDOWS
         hints.ai_flags = AI_NUMERICSERV; /* Require a proper port number param */
+#endif
         // optimisation when we know it's an IP already.
         if (attr & is_ip) hints.ai_flags |= AI_NUMERICHOST;
         hints.ai_protocol = 0;           /* Any protocol */
@@ -241,7 +306,11 @@ namespace common {
       
       //! \brief Disconnects
       ~connection_base() {
+#ifdef LRCON_WINDOWS
+        closesocket(socket_);
+#else 
         close(socket_);
+#endif
       }
       
     public:
@@ -336,7 +405,7 @@ namespace common {
   */
   template<typename T>
   bool read_type(int socket, T &v) {
-    int bytes = recv(socket, &v, sizeof(T), 0);
+    int bytes = recv(socket, (char *) &v, sizeof(T), 0);
     v = server_to_native_endian(v);
     return bytes;
   }
@@ -369,20 +438,24 @@ namespace common {
   template <typename T>
   bool send_type(int socket, T v) {
     v = native_to_server_endian(v);
-    int bytes = send(socket, &v, sizeof(T), 0);
+    int bytes = send(socket, (char *) &v, sizeof(T), 0);
     return bytes;
   }
   
   template <typename Exception>
   int read_to_buffer(int socket_fd, void *buff, size_t buffsz, const char *errormsg = "recv() failed") {
     int read = 0;
+#ifdef LRCON_WINDOWS
+    if ((read = recv(socket_fd, (char *) buff, buffsz, 0)) == -1) {
+#else 
     if ((read = recv(socket_fd, buff, buffsz, 0)) == -1) {
+#endif
       common::errno_throw<Exception>(errormsg);
     }
     return read;
   }
   
-  int read_to_buffer(int socket_fd, void *buff, size_t buffsz, const char *errormsg = "recv() failed") {
+  inline int read_to_buffer(int socket_fd, void *buff, size_t buffsz, const char *errormsg = "recv() failed") {
     return read_to_buffer<recv_error>(socket_fd, buff, buffsz, errormsg);
   }
 }

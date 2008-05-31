@@ -2,6 +2,7 @@
 # M4 macros.
 # This file is part of AutoTroll.
 # Copyright (C) 2006  Benoit Sigoure <benoit.sigoure@lrde.epita.fr>
+# Modified 2008, James Webber (the .hpp stuff)
 #
 # AutoTroll is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
