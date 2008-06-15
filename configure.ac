@@ -2,7 +2,11 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([lrcon], [0.5])
+
+# /me hates m4 :(
+m4_define([DYN_PROGNAME], m4_esyscmd([cat ./name | tr -d '\n']))
+m4_define([DYN_VERSION], m4_esyscmd([cat ./version | tr -d '\n']))
+AC_INIT(DYN_PROGNAME, DYN_VERSION)
 # extra stuff for building
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([-Wall -Werror])

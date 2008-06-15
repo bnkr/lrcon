@@ -166,22 +166,30 @@ namespace common {
   }
   
 #ifdef LRCON_WINDOWS
-  inline int winsock_init_func() {
+  //! Not threadsafe and generally a big hack.  Perhaps it should be made that 
+  //! you just link to a static lib which does this statically.
+  inline int winsock_init() {
     static WSADATA w;
     static bool done = false;
     if (! done) {
-      int error = WSAStartup (0x0202, &w);   // Fill in w
+      int error = WSAStartup(0x0202, &w);
   
-      if (error) { // there was an error
+      if (error) {
+        /// better exception needed
+        throw connection_error("Winsock error; couldn't run winsock startup.");
         // do something?!
       }
       if (w.wVersion != 0x0202) { // wrong WinSock version!
+        /// does this need to be called always?  It's annoying.  Really there needs an
+        /// object somewhere which does this like class network;.  Shame that the bsd
+        /// implementers would need to use it also.
         WSACleanup(); // unload ws2_32.dll
+        throw connection_error("Wrong winsock version.");
       }
-      done = true;;
+      done = true;
       return error;
     }
-    return true;
+    return 0;
   }
 #endif
   
@@ -217,7 +225,7 @@ namespace common {
       */
       host(const char *host, const char *port, int attr = host::tcp) {
 #ifdef LRCON_WINDOWS
-        winsock_init_func();
+        winsock_init();
 #endif
         COMMON_DEBUG_MESSAGE("Host is: " << host << ":" << port << " a:" << attr);
         

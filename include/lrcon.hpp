@@ -41,13 +41,17 @@ documentation resides in \link lrcon.hpp \endlink.
   The RCON/lrcon part is considered 'good' now.
 - Improvments to lrcon app.
 
+\par June 2008
+\par 0.5
+- Qt4 application for RCON.
+
 \section s_plans Plans
 
-\par 0.5 
+\par 0.6
 - First hacked up functionality for the query part.
 - Application for querying a counter-strike: source server.
 
-\par 0.6
+\par 0.7
 - Reorganisation of query code to reduce duplication.
 - Dynamic timeouts.
 

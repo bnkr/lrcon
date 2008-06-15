@@ -7,8 +7,8 @@ EXTRA_DIST = extra_todos.hpp master.hpp
 
 bin_PROGRAMS = lrcon query
 
-# for messing around.. need more missions to make this work proper	ly.
-LRCON_WIN_LIBS = -lws2_32
+# for messing around.. need more missions to make this work properly.
+#LRCON_WIN_LIBS = -lws2_32
 
 lrcon_SOURCES = lrcon.cpp  
 lrcon_CXXFLAGS = -Wall -pedantic ${AM_CXXFLAGS}

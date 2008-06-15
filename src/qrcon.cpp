@@ -29,7 +29,8 @@
 - up arrow on the command box shows previous commands
 - proper validation of inputs
 - handling of errors from the protocol
-- 
+- commandline help
+
 
 */
 
