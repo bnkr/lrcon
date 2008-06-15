@@ -65,6 +65,23 @@ if test x$enableval != xno ; then
 fi
 AC_SUBST([QUERY_DEBUG_FLAGS])
 
+enableval="no"
+AC_ARG_ENABLE([doxygen],
+              AS_HELP_STRING([--enable-doxygen=file], 
+                             [Select a base Doxyfile.  Doxgyen is built with the dist or doxygen target.  Default is 'Doxyfile.default'.]) )
+DOXYFILE="${srcdir}/Doxyfile.default"
+if test x$enableval != xno ; then
+  DOXYFILE=$enableval;
+fi
+echo "info: using doxyfile: ${DOXYFILE}";
+
+if ! test -r ${DOXYFILE}; then
+  AC_MSG_ERROR([The doxygen file ${DOXYFILE} can't be read.])
+  exit 1;
+fi
+AC_SUBST([DOXYFILE])
+
+
 ## magic to make qt work (autotroll package)
 AT_WITH_QT
 

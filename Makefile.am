@@ -1,5 +1,3 @@
-DOXYFILE = ${top_srcdir}/Doxyfile.default
-
 # Build recursively in src
 SUBDIRS = src include 
 EXTRA_DIST = doc ${DOXYFILE} examples version name
@@ -15,8 +13,9 @@ dist-hook: 	doxygen
 distclean-local:
 		rm -rfv doc/*
 
-# To reconfigure doxygen dynamically (remember to suffix this with a semicolon)
-DOXYGEN_CONFS = cat ${DOXYFILE}; echo "PROJECT_NUMBER = " `cat ./version`; echo "PROJECT_NAME = " `cat ./name`
+# To reconfigure doxygen dynamically (remember to suffix these with a semicolon)
+DOXYGEN_INPUTS = echo "INPUT = ${top_srcdir}/include/ ${top_srcdir}/src/"
+DOXYGEN_CONFS = cat ${DOXYFILE}; ${DOXYGEN_INPUTS}; echo "PROJECT_NUMBER = " `cat ${top_srcdir}/version`; echo "PROJECT_NAME = " `cat ${top_srcdir}/name`
 
 # Does doxygen and additionally ignores any undocumented parameter warnings.
 # These pop up if you have only documented a subset of the parameters of a
