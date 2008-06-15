@@ -21,7 +21,7 @@
 // #include <sys/socket.h>
 // #include <netdb.h>
 
-#include <config.h>
+// #include <config.h>
 
 /// stuffs on win vs. unix: http://tangentsoft.net/wskfaq/articles/bsd-compatibility.html
 
@@ -409,10 +409,9 @@ namespace common {
   
   /*! 
   \brief Reads an integral type, ensureing endianness.
-  \returns bytes sent or -1 on error
   */
   template<typename T>
-  bool read_type(int socket, T &v) {
+  int read_type(int socket, T &v) {
     int bytes = recv(socket, (char *) &v, sizeof(T), 0);
     v = server_to_native_endian(v);
     return bytes;

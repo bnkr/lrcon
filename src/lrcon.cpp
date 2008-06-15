@@ -27,7 +27,7 @@ void print_usage(const char *pname) {
   std::cout 
       << pname << " -p password [OPTIONS] command [args]...\n"
       "Executes command with args on an RCON server and retrieve the output.  Command\n"
-      "can be a hyphen (-) to trigger reading from stdin.  The program automatically\n" 
+      "can be a dash (-) to trigger reading from stdin.  The program automatically\n" 
       "reads from stdin if it was redirected.\n\n"
       "  -p  password (required argument)\n"
       "  -P  port (default: 27015)\n"

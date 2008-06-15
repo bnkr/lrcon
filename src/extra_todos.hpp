@@ -6,7 +6,12 @@
 
 \todo Better doxygen support:
       - From configure (maybe), set to use INPUT_DIR = include/ src/ .  So we have
-        the library and the non-library parts documented.
+        the library and the non-library parts documented.  This would only affect
+        the dist target.
+      - Ability to set a different default doxyfile. --enable-doxygen=file.  And 
+        say that you must build the doxygen manually.
+      - Add extra conf vars; specifically INPUT_DIR could be done this way, or 
+        turning on and off dotty.
       - Add docs/ to the docdir install target (if enabled).
 
 \todo An option should be provided to turn on and off debug messages in configure.
