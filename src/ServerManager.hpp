@@ -1,13 +1,15 @@
 #ifndef SERVERMANAGER_HPP_sdfsdf
 #define SERVERMANAGER_HPP_sdfsdf
 
+#include "common.hpp"
+
+
 #include <lrcon/rcon.hpp>
 
 #include <QObject>
 #include <QLineEdit>
 #include <QTextEdit>
 
-#include <iostream>
 
 /*!
 

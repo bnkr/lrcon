@@ -5,14 +5,10 @@
 \brief File to add doxygen todos.
 
 \todo Better doxygen support:
-      - From configure (maybe), set to use INPUT_DIR = include/ src/ .  So we have
-        the library and the non-library parts documented.  This would only affect
-        the dist target.
-      - Ability to set a different default doxyfile. --enable-doxygen=file.  And 
-        say that you must build the doxygen manually.
-      - Add extra conf vars; specifically INPUT_DIR could be done this way, or 
-        turning on and off dotty.
-      - Add docs/ to the docdir install target (if enabled).
+      - Add doc/ to the docdir install target.  I'm not sure how to do this well
+        because doc/ doesn't exist until dist has already run, and then we can't
+        be sure of what is actually in there.  Normally, it's html but there
+        might also be man and latex.
 
 \todo An option should be provided to turn on and off debug messages in configure.
 

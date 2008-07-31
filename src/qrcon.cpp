@@ -1,5 +1,8 @@
 #include <lrcon/rcon.hpp>
 
+#include "common.hpp"
+
+
 #include <QObject>
 #include <QApplication>
 #include <QPushButton>
@@ -37,8 +40,6 @@
 
 
 #include "ServerManager.hpp"
-
-
 
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);

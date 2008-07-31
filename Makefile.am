@@ -1,6 +1,6 @@
 # Build recursively in src
 SUBDIRS = src include 
-EXTRA_DIST = doc ${DOXYFILE} examples version name
+EXTRA_DIST = doc ${DOXYFILE} examples version name README.documentation README.cross-compiling
 
 # Necessary or it won't notice the extra scripts
 ACLOCAL_AMFLAGS = -I build-aux
@@ -11,11 +11,24 @@ dist-hook: 	doxygen
 
 # This is build by dist so it's a relative path.
 distclean-local:
-		rm -rfv doc/*
+		rm -rf doc/*
 
 # To reconfigure doxygen dynamically (remember to suffix these with a semicolon)
-DOXYGEN_INPUTS = echo "INPUT = ${top_srcdir}/include/ ${top_srcdir}/src/"
-DOXYGEN_CONFS = cat ${DOXYFILE}; ${DOXYGEN_INPUTS}; echo "PROJECT_NUMBER = " `cat ${top_srcdir}/version`; echo "PROJECT_NAME = " `cat ${top_srcdir}/name`
+DOXYGEN_INPUTS = "${top_srcdir}/include/ ${top_srcdir}/src/"
+DOXYGEN_CONFS = cat ${DOXYFILE}; \
+                echo "EXAMPLE_PATH = ${top_srcdir}/examples/"; \
+                echo "INPUT = ${DOXYGEN_INPUTS}"; \
+                echo "PROJECT_NUMBER = " `cat ${top_srcdir}/version`; \
+                echo "PROJECT_NAME = " `cat ${top_srcdir}/name`
+
+# Should be dynamic, and also while this does work, I think it would fail whenever
+# there are subdirectories of html/, which there can be under some configurations.
+#
+#   cat Doxyfile.default  | grep 'HTML_OUTPUT\s*=' | awk '{ print $3 }'
+# 
+# btw, the docdir itself could be configured just as easily this way but it probably 
+# shouldn't be.
+html_DATA = ${top_srcdir}/doc/html/*
 
 # Does doxygen and additionally ignores any undocumented parameter warnings.
 # These pop up if you have only documented a subset of the parameters of a

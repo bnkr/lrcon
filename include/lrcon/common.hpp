@@ -5,15 +5,6 @@
 \brief Containing the entire \link common \endlink namespace.
 */
 
-/// \todo Is it nicer to have wait_for_select, read and co. in the connection
-///       datatype.  Then we just always work with this connection?  Better for
-///       a lib maybe, of course, the read<T> type functions are nice for reading
-///       from an arbitrary buffer anyway.  If it happens the other way then it
-///       could be made ostream like.  Lots more stuff needs to be parameterised
-///       for the lib anyway so the current design is prolly ok.  Also, these
-///       atributes like type() should be hidden; host is more like an opaque
-///       type.
-
 #ifndef COMMON_HPP_y3dykfiu
 #define COMMON_HPP_y3dykfiu
 
@@ -28,14 +19,15 @@
 /// \todo WSAGetLastError() is needed to get errno; also the actual numbers are different (but gai_strerror would work 
 ///       (not threadsafe aparently))
 
-/// \todo This whole portability segment is messed.
+/// \todo Stop using LRCON_WINDOWS and use WIN32 instead.
 
-#ifdef HAVE_WINSOCK_H
+#ifdef WIN32
 #define LRCON_WINDOWS
 #endif 
 
 #ifdef LRCON_WINDOWS
-// there is no getaddrinfo etc. until winxp [later there might be portable wrappers in mingw]
+// there is no getaddrinfo etc. until winxp [later there might be portable wrappers in mingw - 
+// there is one in vlc now, maybe could port?]
 // #  define WINVER WindowsXP /* <-- doesn't work ?! */
 #  define _WIN32_WINNT 0x501 /* this isn't the right way to do it! */
 #  include <winsock2.h>
@@ -71,6 +63,8 @@
 Readability variable for endianness feature test.  When it is defined, the byte 
 order is swapped transparently.
 */
+
+/// \todo Use boost's endianism detection file (see in libbdbg).
 
 #ifndef __BYTE_ORDER
 #  warning: assuming little endian byte order because __BYTE_ORDER does not exist.
@@ -166,39 +160,50 @@ namespace common {
   }
   
 #ifdef LRCON_WINDOWS
-  //! Not threadsafe and generally a big hack.  Perhaps it should be made that 
-  //! you just link to a static lib which does this statically.
-  inline int winsock_init() {
-    static WSADATA w;
-    static bool done = false;
-    if (! done) {
-      int error = WSAStartup(0x0202, &w);
-  
-      if (error) {
-        /// better exception needed
-        throw connection_error("Winsock error; couldn't run winsock startup.");
-        // do something?!
+  namespace {
+    /*!
+    \todo Probably there should be a way for the user to do this manually,
+          so they can check for the exceptions themselves.
+    */
+    struct network_init {
+      WSADATA w;
+    
+      network_init() {
+        int error = WSAStartup(0x0202, &w);
+        COMMON_DEBUG_MESSAGE("WSAStartup done.  Code: " << error);
+        
+        if (error) {
+          /// \todo better exception needed
+          throw connection_error("Winsock error; couldn't run winsock startup.");
+        }
+        
+        if (w.wVersion != 0x0202) { // wrong WinSock version!
+          WSACleanup();
+          /// \todo better exception needed
+          throw connection_error("Wrong winsock version.");
+        }
       }
-      if (w.wVersion != 0x0202) { // wrong WinSock version!
-        /// does this need to be called always?  It's annoying.  Really there needs an
-        /// object somewhere which does this like class network;.  Shame that the bsd
-        /// implementers would need to use it also.
-        WSACleanup(); // unload ws2_32.dll
-        throw connection_error("Wrong winsock version.");
+      
+      ~network_init() {
+        WSACleanup();
       }
-      done = true;
-      return error;
-    }
-    return 0;
+    };
+    
+    network_init winsock_stuff;
   }
+  
+  
 #endif
   
   /*!
   \brief Take care of DNS and so on.  Prefer to use sub-classes.
 
-  \todo This class is fine if you connect by DGRAM to a STREAM host, eg if 
-        I connect to a webserver.  The error is not caught intil the recv
-        call.  Any way I can trap it here?  Or elsewhere?
+  \bug This class is fine if you connect by DGRAM to a STREAM host, eg if 
+       I connect to a webserver.  The error is not caught intil the recv
+       call.  Any way I can trap it here?  Or elsewhere?  In fact this
+       happens when I connect to any server which is 'not there'.  Maybe
+       when the packet is dropped instead of reset/rejected?  Need some 
+       unit testing on this.
   
   \todo take an int for the port as well -- overloaded.  We can supply it as
         part of the hints.  Then you can just htonl it and put it in the hints 
@@ -224,12 +229,14 @@ namespace common {
       \param attr  Bitmask of options from host_attr_t.  Defaults to tcp if nothing is set.
       */
       host(const char *host, const char *port, int attr = host::tcp) {
-#ifdef LRCON_WINDOWS
-        winsock_init();
-#endif
         COMMON_DEBUG_MESSAGE("Host is: " << host << ":" << port << " a:" << attr);
         
         struct addrinfo hints;
+#ifdef LRCON_WINDOWS
+        // Necessary or gai crashes with unrecoverable error during database lookup.  
+        // (But a swear I set all the fields, mum!)
+        ZeroMemory(&hints, sizeof(struct addrinfo)); 
+#endif
         
         hints.ai_family = AF_UNSPEC;     /* values: IPv6 AF_INET or AF_INET6 */
         assert(! (attr & tcp & udp));
@@ -251,15 +258,16 @@ namespace common {
         hints.ai_addr = NULL;
         hints.ai_next = NULL;
   
+        COMMON_DEBUG_MESSAGE("Getting address info.");
         int r;
         if ((r = getaddrinfo(host, port, &hints, &ad_info)) != 0) {
-          throw connection_error(std::string("gettaddrinfo() failed: ") + gai_strerror(r));
+          throw connection_error(std::string("getaddrinfo() failed: ") + gai_strerror(r));
         }
         
         if (ad_info->ai_addr == NULL || ad_info->ai_addrlen == 0) {
           throw connection_error("No socket address returned.");
         }
-#ifdef RCON_DEBUG_MESSAGES
+#if defined(RCON_DEBUG_MESSAGES) || defined(QUERY_DEBUG_MESSAGES) || defined(COMMON_DEBUG_MESSAGES)
         else if (ad_info->ai_next != NULL) {
           COMMON_DEBUG_MESSAGE("Warning: more than one socket address was returned "
                                "from gettaddrinfo().  This could be a sign of protocol "

@@ -1,10 +1,26 @@
 ./configure --host=i586-mingw32msvc && make clean && make
 
-The host seems directly related to the names of the cross-compilers that are installed.
-Configure fails to detect anything else anyway.
+You will need a full cross-compile enviornment set up.  Unfortunately it seems that
+most distributions don't have the qt-windows headers included (to save disk space?)
+so you'll need to sort all that out manually and edit the include paths.  
 
-Seems to do it... blowed if I can actually make it compile though ^^.  Maybe cygwin is 
-a better choice.  I would also need the full source of windows stuff for qt4, and 
-presumably the dlls... bleh.  I'd rather link it on windows somehow.  Must be a pain
-though.
+
+It will work when compiled from cygwin, but it needs to be done manually (for now):
+
+g++ -mno-cygwin
+    -I /cygdrive/c/Qt/4.4.0/include/Qt/ \
+    -I /cygdrive/c/Qt/4.4.0/include/QtCore/ \
+    -I /cygdrive/c/Qt/4.4.0/include/QtGui/ \
+    -I /cygdrive/c/Qt/4.4.0/include/ \
+    -I ../include/ \
+    -L /cygdrive/c/Qt/4.4.0/bin/ \
+    qrcon.cpp ServerManager.cpp ServerManager.moc.cpp \
+    -lQtGui4 -lQtCore4 -lWs2_32 \
+    -o qrcon.exe
+
+Obviously, for the parts without Qt, the Qt4 libs are not required but the compile 
+command is similar.
+
+/cygdrive/c/Qt/4.4.0/ should be substituted for wherever Qt is installed on your 
+windows box.
 

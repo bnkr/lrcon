@@ -1,6 +1,11 @@
 Documentation is built only with the `dist' target.  If you want to rebuild, then
-use 'make doxygen'.  The configuration is defined by 'cat ${DOXYFILE}' and then 
-redefining some variables like the program name and version so you can easily
-change the configuration.  Mostly you might want to turn off HAVE_DOT to get rid 
-of the caller/callee graphs or, if you are distributing this, redefine INPUT_DIR
-to just be include/ so only the library documentation is included.
+use 'make doxygen'.  The configuration is built by 'cat ${DOXYFILE}' and then 
+redefining some variables on the command line.  If you are are distributing this, 
+then you will probably want to redefine doxygen's INPUT variable such that only
+the library documentation is built (not the applications too).  For this, use:
+
+  make DOXYGEN_INPUTS=include/ doxygen
+
+To redefine 'base' variables, use a different doxyfile specified with the configure
+option.  The only other overridden variables are designed to make the documentation
+build with VPATH so you should not need to redefine anything else.
