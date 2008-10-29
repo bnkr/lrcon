@@ -1,6 +1,6 @@
 # Build recursively in src
 SUBDIRS = src include 
-EXTRA_DIST = doc ${DOXYFILE} examples version name README.documentation README.cross-compiling
+EXTRA_DIST = doc ${DOXYFILE} examples version name README.documentation README.windows
 
 # Necessary or it won't notice the extra scripts
 ACLOCAL_AMFLAGS = -I build-aux

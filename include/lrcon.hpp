@@ -45,20 +45,24 @@ documentation resides in \link lrcon.hpp \endlink.
 \par 0.5
 - Qt4 application for RCON.
 
+\par July 2008
+\par 0.6
+- Windows compatability
+
 \section s_plans Plans
 
-\par 0.6
+\par ++y
 - First hacked up functionality for the query part.
 - Application for querying a counter-strike: source server.
 
-\par 0.7
+\par ++y
 - Reorganisation of query code to reduce duplication.
 - Dynamic timeouts.
 
-\par 1.0
+\par ++x
 - Resolve outstanding todos and tidying.
 
-\par 1.x
+\par ++x.++y
 - Querying things other than cs:source.
 - RCON to things other than source engine servers.
 */

@@ -81,6 +81,14 @@ if ! test -r ${DOXYFILE}; then
 fi
 AC_SUBST([DOXYFILE])
 
+# No idea is this is robust enough.
+AC_CANONICAL_HOST
+LRCON_LDADD=
+if test  x$host_os = xmingw32msvc ; then
+  LRCON_LDADD="-lws2_32"
+fi
+AC_SUBST([LRCON_LDADD])
+echo "info: host alias is ${host_os}, so ldadd becomes ${LRCON_LDADD}.";
 
 ## magic to make qt work (autotroll package)
 AT_WITH_QT

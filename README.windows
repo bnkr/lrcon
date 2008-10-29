@@ -1,0 +1,35 @@
+./configure --build=i686-pc-linux-gnu \
+            --host=i586-mingw32msvc \
+            CPPFLAGS=-I/path/to/qt-win/4.4.0/include/ \
+            LDFLAGS=-L/path/to/qt-win/4.4.0/bin/ \
+  && make clean && make
+
+Note: it says in the autoconf documentation that you need to specify build and host
+in order to enter cross-compilation mode.
+
+Currently, the automatic Qt configuration for autoconf doesn't detect that it needs
+to use windows libraries so you need to put them in src/Makefile.am manually.
+
+Alternatively, you might be able to get away with just setting the include path to
+the tree which has the windows headers (unless your distribution has them anyway)
+and then just renaming the .dll files to remove the '4' suffix.
+
+It will work when compiled from cygwin, but it needs to be done manually (for now):
+
+g++ -mno-cygwin
+    -I /cygdrive/c/Qt/4.4.0/include/Qt/ \
+    -I /cygdrive/c/Qt/4.4.0/include/QtCore/ \
+    -I /cygdrive/c/Qt/4.4.0/include/QtGui/ \
+    -I /cygdrive/c/Qt/4.4.0/include/ \
+    -I ../include/ \
+    -L /cygdrive/c/Qt/4.4.0/bin/ \
+    qrcon.cpp ServerManager.cpp ServerManager.moc.cpp \
+    -lQtGui4 -lQtCore4 -lws2_32 \
+    -o qrcon.exe
+
+Obviously, for the parts without Qt, the Qt4 libs are not required but the compile 
+command is similar (needs -lws2_32).
+
+/cygdrive/c/Qt/4.4.0/ should be substituted for wherever Qt is installed on your 
+windows box.
+

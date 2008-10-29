@@ -38,6 +38,7 @@
 #  include <netinet/in.h>
 #  include <arpa/inet.h>
 #  include <netdb.h>
+#  include <fcntl.h>
 #endif
 
 #ifdef HAVE_ENDIAN_H
@@ -51,7 +52,7 @@
 #include <stdexcept>
 #include <iostream>
 
-#if defined(RCON_DEBUG_MESSAGES) || defined(QUERY_DEBUG_MESSAGES)
+#if defined(RCON_DEBUG_MESSAGES) || defined(QUERY_DEBUG_MESSAGES) || defined(COMMON_DEBUG_MESSAGES)
 #  define COMMON_DEBUG_MESSAGE(x__) std::cout << x__ << std::endl;
 #else
 #  define COMMON_DEBUG_MESSAGE(x__)
@@ -163,7 +164,8 @@ namespace common {
   namespace {
     /*!
     \todo Probably there should be a way for the user to do this manually,
-          so they can check for the exceptions themselves.
+          so they can check for the exceptions themselves.  (Also this 
+          would result in multiple definitions issues sometimes.)
     */
     struct network_init {
       WSADATA w;
@@ -195,16 +197,10 @@ namespace common {
   
 #endif
   
+  
   /*!
   \brief Take care of DNS and so on.  Prefer to use sub-classes.
 
-  \bug This class is fine if you connect by DGRAM to a STREAM host, eg if 
-       I connect to a webserver.  The error is not caught intil the recv
-       call.  Any way I can trap it here?  Or elsewhere?  In fact this
-       happens when I connect to any server which is 'not there'.  Maybe
-       when the packet is dropped instead of reset/rejected?  Need some 
-       unit testing on this.
-  
   \todo take an int for the port as well -- overloaded.  We can supply it as
         part of the hints.  Then you can just htonl it and put it in the hints 
         I think.
@@ -229,7 +225,7 @@ namespace common {
       \param attr  Bitmask of options from host_attr_t.  Defaults to tcp if nothing is set.
       */
       host(const char *host, const char *port, int attr = host::tcp) {
-        COMMON_DEBUG_MESSAGE("Host is: " << host << ":" << port << " a:" << attr);
+        COMMON_DEBUG_MESSAGE("Host is: " << host << ":" << port << " attr:" << attr);
         
         struct addrinfo hints;
 #ifdef LRCON_WINDOWS
@@ -267,7 +263,7 @@ namespace common {
         if (ad_info->ai_addr == NULL || ad_info->ai_addrlen == 0) {
           throw connection_error("No socket address returned.");
         }
-#if defined(RCON_DEBUG_MESSAGES) || defined(QUERY_DEBUG_MESSAGES) || defined(COMMON_DEBUG_MESSAGES)
+#if defined(COMMON_DEBUG_MESSAGES)
         else if (ad_info->ai_next != NULL) {
           COMMON_DEBUG_MESSAGE("Warning: more than one socket address was returned "
                                "from gettaddrinfo().  This could be a sign of protocol "
@@ -291,20 +287,21 @@ namespace common {
       
       //! SOCK_DGRAM etc.  For socket()
       int type() const { return ad_info->ai_socktype; }
+      
   };
+  
+  
+  
   
   //! \brief Non-instancable base class which resolves a circular dependancy from having authing.
   class connection_base {
+    static const int wait_for_select_timeout = 0;
+    
     int socket_;
     
     protected:
       /*! 
-      \brief Connects
-      
-      \bug connect() blocks forever if you connect to example.com:27015 -- can't I timeout?  
-           Or find it in host?  This is when the host is dropping packets I guess.
-      
-      \todo Likely I need to use select() here to see if it's ready to be connected to.
+      \brief Connects to the server.
       */
       connection_base(const host &server) {
         COMMON_DEBUG_MESSAGE("Initialising sockets.");
@@ -313,8 +310,27 @@ namespace common {
           errno_throw<connection_error>("socket() failed");
         }
         
-        if (connect(socket_, server.address(), server.address_len()) == -1) {
+        // Add  O_NONBLOCK to the fd's flags
+        //! \todo This is non-portable to windows
+        int flags = fcntl(socket_, F_GETFL, 0);
+        if (flags == -1) {
+          errno_throw<connection_error>("fcntl() F_GETFL failed");
+        }
+        else if (! (flags & O_NONBLOCK)) {
+          if (fcntl(socket_, F_SETFL, flags | O_NONBLOCK) == -1) { 
+            std::cerr << "warning: couldn't set non-blocking flags on the socket.  "
+                         "If the host drops packets, the connection will block forever." << std::endl;
+          }
+        }
+
+        int ret = connect(socket_, server.address(), server.address_len());
+        if (ret == -1 && errno != EINPROGRESS) {
           errno_throw<connection_error>("connect() failed");
+        }
+        
+        if (wait_for_select(socket_) == wait_for_select_timeout) {
+          /// \todo Coluld do with a timeout_error.
+          throw connection_error("timeout when connecting to host.");
         }
         
         COMMON_DEBUG_MESSAGE("Got sockets.");
@@ -329,34 +345,33 @@ namespace common {
 #endif
       }
       
+      //! 0 if timeout, time_left if no timeout, -1 if error.  Time params are offsets.
+      inline int wait_for_select(int socket_fd, int timeout_usecs = 1000000) {
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(socket_fd, &rfds);
+            
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = timeout_usecs;
+        if (select(socket_fd+1, &rfds, NULL, NULL, &timeout) == -1) {
+          errno_throw<connection_error>("select() failed");
+        }
+        
+        if (FD_ISSET(socket_fd, &rfds)) {
+          return timeout.tv_usec; 
+        }
+        else {
+          return wait_for_select_timeout;
+        }
+      }
+
+      
     public:
       //! Necessary to be public for the message types to call it but not the user.
       int socket() { return socket_; }
   };
   
-  const int wait_for_select_error = -1;
-  const int wait_for_select_timeout = 0;
-  
-  //! 0 if timeout, time_left if no timeout, -1 if error.  Time params are offsets.
-  inline int wait_for_select(int socket_fd, int timeout_usecs = 1000000) {
-    fd_set rfds;
-    FD_ZERO(&rfds);
-    FD_SET(socket_fd, &rfds);
-        
-    struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = timeout_usecs;
-    if (select(socket_fd+1, &rfds, NULL, NULL, &timeout) == -1) {
-      return wait_for_select_error; // don't throw because the callers might need a different exception
-    }
-    
-    if (FD_ISSET(socket_fd, &rfds)) {
-      return timeout.tv_usec; 
-    }
-    else {
-      return wait_for_select_timeout;
-    }
-  }
   
   //! Copies from little endian to system endian.
   template <typename T>
