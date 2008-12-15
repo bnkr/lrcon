@@ -3,13 +3,11 @@
 
 #include "common.hpp"
 
-
 #include <lrcon/rcon.hpp>
 
 #include <QObject>
 #include <QLineEdit>
 #include <QTextEdit>
-
 
 /*!
 
