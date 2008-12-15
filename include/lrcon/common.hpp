@@ -234,7 +234,7 @@ namespace common {
         ZeroMemory(&hints, sizeof(struct addrinfo)); 
 #endif
         
-        hints.ai_family = AF_UNSPEC;     /* values: IPv6 AF_INET or AF_INET6 */
+        hints.ai_family = AF_INET; /*AF_UNSPEC*/;     /* values: IPv6 AF_INET or AF_INET6 */
         assert(! (attr & tcp & udp));
         if (attr & udp) {
           hints.ai_socktype = SOCK_DGRAM;
@@ -291,7 +291,42 @@ namespace common {
   };
   
   
+  const int wait_for_select_timeout = 0;
+  typedef enum {wait_readable, wait_writeable} wait_for_select_mode_t;
   
+  //! 0 if timeout, time_left if no timeout, -1 if error.  Time params are offsets.
+  inline int wait_for_select(int socket_fd, wait_for_select_mode_t mode = wait_readable, int timeout_usecs = 1000000) {
+    
+    /// \todo This func implies that I should really have stored the connection object
+    ///       in the command object.  It breaks things atm, but later I should 
+    ///       organise it like that, and move this function in there (if I haven't
+    ///       already done it in the new network lib)
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(socket_fd, &fds);
+        
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = timeout_usecs;
+    int ret;
+    if (mode == wait_readable) {
+      ret = select(socket_fd+1, &fds, NULL, NULL, &timeout);
+    }
+    else {
+      ret = select(socket_fd+1, NULL, &fds, NULL, &timeout);
+    }
+    
+    if (ret == -1) {
+      errno_throw<connection_error>("select() failed");
+    }
+    
+    if (FD_ISSET(socket_fd, &fds)) {
+      return timeout.tv_usec; 
+    }
+    else {
+      return wait_for_select_timeout;
+    }
+  }
   
   //! \brief Non-instancable base class which resolves a circular dependancy from having authing.
   class connection_base {
@@ -311,7 +346,10 @@ namespace common {
         }
         
         // Add  O_NONBLOCK to the fd's flags
-        //! \todo This is non-portable to windows
+        /// \todo Get this working on windows
+#ifndef LRCON_WINDOWS
+        COMMON_DEBUG_MESSAGE("Setting nonblock.");
+        
         int flags = fcntl(socket_, F_GETFL, 0);
         if (flags == -1) {
           errno_throw<connection_error>("fcntl() F_GETFL failed");
@@ -322,16 +360,27 @@ namespace common {
                          "If the host drops packets, the connection will block forever." << std::endl;
           }
         }
-
+        
+        COMMON_DEBUG_MESSAGE("Connecting socket.");
         int ret = connect(socket_, server.address(), server.address_len());
-        if (ret == -1 && errno != EINPROGRESS) {
+        if (errno == EINPROGRESS && ret == -1) {
+          COMMON_DEBUG_MESSAGE("Connect is now in progress.");
+        }
+        else {
           errno_throw<connection_error>("connect() failed");
         }
         
-        if (wait_for_select(socket_) == wait_for_select_timeout) {
+        COMMON_DEBUG_MESSAGE("Waiting for select.");
+        if (wait_for_select(socket_, wait_writeable, 1000000) == wait_for_select_timeout) {
           /// \todo Coluld do with a timeout_error.
           throw connection_error("timeout when connecting to host.");
         }
+#else 
+        COMMON_DEBUG_MESSAGE("Connecting socket.");
+        if (connect(socket_, server.address(), server.address_len()) == -1) {
+          errno_throw<connection_error>("connect() failed");
+        }
+#endif
         
         COMMON_DEBUG_MESSAGE("Got sockets.");
       }
@@ -344,33 +393,13 @@ namespace common {
         close(socket_);
 #endif
       }
-      
-      //! 0 if timeout, time_left if no timeout, -1 if error.  Time params are offsets.
-      inline int wait_for_select(int socket_fd, int timeout_usecs = 1000000) {
-        fd_set rfds;
-        FD_ZERO(&rfds);
-        FD_SET(socket_fd, &rfds);
-            
-        struct timeval timeout;
-        timeout.tv_sec = 0;
-        timeout.tv_usec = timeout_usecs;
-        if (select(socket_fd+1, &rfds, NULL, NULL, &timeout) == -1) {
-          errno_throw<connection_error>("select() failed");
-        }
-        
-        if (FD_ISSET(socket_fd, &rfds)) {
-          return timeout.tv_usec; 
-        }
-        else {
-          return wait_for_select_timeout;
-        }
-      }
 
       
     public:
       //! Necessary to be public for the message types to call it but not the user.
       int socket() { return socket_; }
   };
+  
   
   
   //! Copies from little endian to system endian.

@@ -168,19 +168,17 @@ namespace rcon {
       bool read(int socket, bool error_on_timeout = true) {
         RCON_DEBUG_MESSAGE("Reading a packet.");
         
-//         int timeleft = common::wait_for_select(socket);
-//         if (timeleft == common::wait_for_select_timeout) {
-//           RCON_DEBUG_MESSAGE("Timeout.");
-//           if (error_on_timeout) {
-//             throw timeout_error("timed out before any data was read.");
-//           }
-//           else {
-//             return false;
-//           }
-//         }
-//         else if (timeleft == common::wait_for_select_error) {
-//           common::errno_throw<recv_error>("select() failed"); /// \todo different exception?
-//         }
+        /// \todo Needed before every read?
+        int timeleft = common::wait_for_select(socket, common::wait_readable);
+        if (timeleft == common::wait_for_select_timeout) {
+          RCON_DEBUG_MESSAGE("Timeout.");
+          if (error_on_timeout) {
+            throw timeout_error("timed out before any data was read.");
+          }
+          else {
+            return false;
+          }
+        }
         
         // Two ints, two strings.
         const size_t max_packet_size = sizeof(int32_t) * 2 + command_base::max_string_length * 2;

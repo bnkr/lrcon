@@ -5,7 +5,8 @@ ACLOCAL_AMFLAGS = -I build-aux
 
 EXTRA_DIST = extra_todos.hpp master.hpp
 
-bin_PROGRAMS = lrcon query
+bin_PROGRAMS = lrcon 
+#bin_PROGRAMS += query
 
 
 lrcon_SOURCES = lrcon.cpp  
@@ -14,11 +15,11 @@ lrcon_CPPFLAGS = -I${top_srcdir}/include/ ${AM_CPPFLAGS}
 lrcon_CPPFLAGS += ${RCON_DEBUG_FLAGS}
 lrcon_LDADD = ${LRCON_LDADD}
 
-query_SOURCES = query.cpp print_buf.hpp
-query_CXXFLAGS = -Wall -pedantic ${AM_CXXFLAGS}
-query_CPPFLAGS = -I${top_srcdir}/include/  ${AM_CPPFLAGS}
-query_CPPFLAGS += ${QUERY_DEBUG_FLAGS}
-query_LDADD = ${LRCON_LDADD}
+#query_SOURCES = query.cpp print_buf.hpp
+#query_CXXFLAGS = -Wall -pedantic ${AM_CXXFLAGS}
+#query_CPPFLAGS = -I${top_srcdir}/include/  ${AM_CPPFLAGS}
+#query_CPPFLAGS += ${QUERY_DEBUG_FLAGS}
+#query_LDADD = ${LRCON_LDADD}
 
 BUILT_SOURCES = ServerManager.moc.cpp
 
