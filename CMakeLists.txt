@@ -75,32 +75,14 @@ set(BIN_QRCON_MOC_SRCS src/ServerManager.hpp)
 #       can generte it for the sourcebuild.
 qt4_wrap_cpp(BIN_QRCON_MOC_OUTPUT ${BIN_QRCON_MOC_SRCS})
 add_executable(${BIN_QRCON} ${BIN_QRCON_SRCS} ${BIN_QRCON_MOC_OUTPUT})
-
-# TODO: nonportable - I want to provide the values in the toolchain file, but it
-#       doesn't seem possible... how do you override computed values without 
-#       going through ccmake?
-#       NOTE: this should get solved when Ifinish patching findQt4 to take a
-#       makespec
-if (${CMAKE_SYSTEM_NAME} MATCHES "Windows") 
-  if (${CMAKE_CXX_COMPILER} MATCHES mingw) 
-    target_link_libraries(${BIN_QRCON} -lQtCore4 -lQtGui4 ${LRCON_LIBRARIES})
-    # TODO: should be for only one target, but there is no CPPFLAGS?  
-    include_directories(/home/bunker/code/cross-compile/windows/include/Qt4
-                        /home/bunker/code/cross-compile/windows/include/Qt4/Qt
-                        /home/bunker/code/cross-compile/windows/include/Qt4/QtCore
-                        /home/bunker/code/cross-compile/windows/include/Qt4/QtGui
-                        )
-  endif()
-else()
-  target_link_libraries(${BIN_QRCON} ${QT_LIBRARIES} ${LRCON_LIBRARIES})
-endif()
+target_link_libraries(${BIN_QRCON} ${QT_LIBRARIES} ${LRCON_LIBRARIES})
 
 ######################
 ## Building Doxygen ##
 ######################
 
-set(DOXYFILE_DEFAULT_FILE ${CMAKE_SOURCE_DIR}/Doxyfile.default)
-set(DOXYFILE_OVERRIDES_FILE ${CMAKE_SOURCE_DIR}/Doxyfile.user-overrides)
+# TODO: put in ccmake vars, docstring
+set(DOXYGEN_DOXYFILE_TEMPLATE ${CMAKE_SOURCE_DIR}/Doxyfile.default)
 
 set(
 DOXYGEN_EXTRAS "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/ 
@@ -117,13 +99,9 @@ if (WANT_DOXYGEN_PDF)
   set(DOXYGEN_EXTRAS "${DOXYGEN_EXTRAS} \nGENERATE_LATEX = yes \n")
 endif()
 
-# TODO: this is bruk if there is more than one doxygen targets!
-# TODO: this should take a template file and not an overrides file.
-# TODO: add the var for the templates file to the ccmake thingy; somehow
-#       set a default that you can override if you want... no idea how
-#       that works.
 add_doxygen(
-  ${DOXYFILE_DEFAULT_FILE} ${DOXYFILE_OVERRIDES_FILE} 
+  doxygen
+  ${DOXYGEN_DOXYFILE_TEMPLATE}
   ${DOXYGEN_EXTRAS}
 )
 
