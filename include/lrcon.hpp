@@ -49,6 +49,10 @@ documentation resides in \link lrcon.hpp \endlink.
 \par 0.6
 - Windows compatability
 
+\par December 2008
+\par 0.6.1
+- Better handling of timeouts and fixes for servers that drop packets.
+
 \section s_plans Plans
 
 \par ++y
@@ -62,7 +66,7 @@ documentation resides in \link lrcon.hpp \endlink.
 \par ++x
 - Resolve outstanding todos and tidying.
 
-\par ++x.++y
+\par ++x/++y
 - Querying things other than cs:source.
 - RCON to things other than source engine servers.
 */

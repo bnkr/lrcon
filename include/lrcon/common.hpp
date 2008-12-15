@@ -348,11 +348,35 @@ namespace common {
         // Add  O_NONBLOCK to the fd's flags
         /// \todo Get this working on windows
 #ifndef LRCON_WINDOWS
+        /**
+        \todo 
+        
+        http://www.developerweb.net/forum/showthread.php?p=13486
+        
+        Some example code suggested that after select worked (ie, no timeout and 
+        no error; select() returns > 0), I should do this:
+        
+          // Socket selected for write 
+          lon = sizeof(int); 
+          if (getsockopt(soc, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon) < 0) { 
+            fprintf(stderr, "Error in getsockopt() %d - %s\n", errno, strerror(errno)); 
+            exit(0); 
+          } 
+          // Check the value returned... 
+          if (valopt) { 
+            fprintf(stderr, "Error in delayed connection() %d - %s\n", valopt, strerror(valopt) ); 
+            exit(0); 
+          } 
+          
+        
+        
+        **/
+        
         COMMON_DEBUG_MESSAGE("Setting nonblock.");
         
         int flags = fcntl(socket_, F_GETFL, 0);
         if (flags == -1) {
-          errno_throw<connection_error>("fcntl() F_GETFL failed");
+          errno_throw<connection_error>("fcntl(): F_GETFL failed");
         }
         else if (! (flags & O_NONBLOCK)) {
           if (fcntl(socket_, F_SETFL, flags | O_NONBLOCK) == -1) { 
@@ -375,14 +399,26 @@ namespace common {
           /// \todo Coluld do with a timeout_error.
           throw connection_error("timeout when connecting to host.");
         }
+        
+        COMMON_DEBUG_MESSAGE("Setting blocking again.");
+        flags = fcntl(socket_, F_GETFL, 0);
+        if (flags == -1) {
+          errno_throw<connection_error>("fcntl(): F_GETFL failed");
+        }
+        else if (flags & O_NONBLOCK) {
+          if (fcntl(socket_, F_SETFL, flags & ~O_NONBLOCK) == -1) { 
+            std::cerr << "warning: couldn't set non-blocking flags on the socket.  "
+                         "If the host drops packets, the connection will block forever." << std::endl;
+          }
+        }
+        
 #else 
         COMMON_DEBUG_MESSAGE("Connecting socket.");
         if (connect(socket_, server.address(), server.address_len()) == -1) {
           errno_throw<connection_error>("connect() failed");
         }
 #endif
-        
-        COMMON_DEBUG_MESSAGE("Got sockets.");
+        COMMON_DEBUG_MESSAGE("Sockets all set up.");
       }
       
       //! \brief Disconnects
