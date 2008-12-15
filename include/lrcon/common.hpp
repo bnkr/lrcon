@@ -301,6 +301,11 @@ namespace common {
     ///       in the command object.  It breaks things atm, but later I should 
     ///       organise it like that, and move this function in there (if I haven't
     ///       already done it in the new network lib)
+    ///       
+    ///       Update: actually, this function could be called as a member of connection.
+    ///       There's not a problem with it really, I just get the socket in the command
+    ///       things so I can write to it directly.  In fact, I could really do everything
+    ///       using a read/write member function of connection.
     fd_set fds;
     FD_ZERO(&fds);
     FD_SET(socket_fd, &fds);
@@ -347,6 +352,7 @@ namespace common {
         
         // Add  O_NONBLOCK to the fd's flags
         /// \todo Get this working on windows
+        ///       http://www.codeguru.com/forum/showthread.php?t=312668 - could help
 #ifndef LRCON_WINDOWS
         /**
         \todo 
@@ -358,6 +364,9 @@ namespace common {
         
           // Socket selected for write 
           lon = sizeof(int); 
+          // checks if, at the socket level (SOL_SOCKET), there is an error (SO_ERROR)
+          // set in the options.  Optval is where it goes, lon is just the length of 
+          // the output (valopt).
           if (getsockopt(soc, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon) < 0) { 
             fprintf(stderr, "Error in getsockopt() %d - %s\n", errno, strerror(errno)); 
             exit(0); 
