@@ -30,15 +30,17 @@ endif()
 
 # General options
 option(WANT_DOXYGEN_HTML "Install (generate if necessary) HTML made by doxygen" YES)
-option(WANT_DOXYGEN_PDF "Install (generate if necessary) PDF from doxygen" NO)
+option(WANT_DOXYGEN_PDF "Install (generate if necessary) PDF from doxygen (needs pdfLaTeX)" NO)
 option(WANT_DOXYGEN_REBUILD "Rebuild doxygen stuff instead of using what's in the tarball (needs doxygen)" NO)
 
 option(WANT_DOXYGEN_PDF_GRAPHICS "Use the graphical stuff in pdfs (needs dot, LaTeX graphics converters)" YES)
 option(WANT_DOXYGEN_HTML_GRAPHICS "Use the graphical stuff in htmls (needs dot)" YES)
 
+mark_as_advanced(WANT_DOXYGEN_PDF_GRAPHICS WANT_DOXYGEN_HTML_GRAPHICS)
+
 # Set it to itself so that this var can be in the toolchain file
-set(QT_QMAKE_SPEC_FILE "${QT_QMAKE_SPEC_FILE}" CACHE STRING 
-    "Manually defined qmake spec files.  Used by patched Qt4 finder to ease cross-compiling.")
+# set(QT_QMAKE_SPEC_FILE "${QT_QMAKE_SPEC_FILE}" CACHE STRING 
+#     "Manually defined qmake spec files.  Used by patched Qt4 finder to ease cross-compiling.")
 
 ###########################
 ## Building normal stuff ##
@@ -91,6 +93,10 @@ set(DOXYGEN_DOXYFILE_TEMPLATE "${CMAKE_SOURCE_DIR}/Doxyfile.default" CACHE STRIN
     "Base doxyfile.  Certain vars will be overwritten (in/output paths mostly).")
 
 # TODO: Generate this string with a lib function; pretend it's a struct.
+# TODO: for a maintainer build, doxygen should do into the source tree since
+#       I need to distribute it as part of the tarball.  Perhaps I can solve
+#       some of this with CPack?  Maybe CPack can manually add in built 
+#       doxygen to the source tarball...
 set(
 DOXYGEN_EXTRAS "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/ 
                 INPUT = ${CMAKE_SOURCE_DIR}/include/ 
@@ -141,8 +147,6 @@ if (WANT_DOXYGEN_PDF)
   # if rebuild, install from binary dir else source dir
 endif()
 
-
-
 # Header files
 install(FILES include/lrcon.hpp DESTINATION include/)
 install(
@@ -164,3 +168,14 @@ install(TARGETS ${BIN_QRCON} RUNTIME DESTINATION bin)
 # TODO: cpack should force doxygen to build
 # TODO: cpack should force moc to run (but that first requires that the mocfiles are 
 #       build into the source which doesn't happen yet)
+# TODO: make it follow symlinks
+# TODO: it would solve a lot of problems if I could build the doxygen normally (into
+#       the binary dir) and then manually put it in the source tarball.  Symlinks can
+#       sort-of do it, but it's pretty messy, especially since the packge_source is so
+#       basic.  Also it causes problem for bunkerprivate.com... 
+#       
+#       hm actually it would be better if I could move the docs into releases/ instead  
+#       of srcdir.  This way the dev docs aren't stored on the website.  
+#       - This should be done by a release script
+#       - CPack should (if possible) take the docs which are in the binary dir. I'm
+#         sure this is at least hackable.
