@@ -44,13 +44,8 @@ set(QT_QMAKE_SPEC_FILE "${QT_QMAKE_SPEC_FILE}" CACHE STRING
 ## Building normal stuff ##
 ##########################
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND ${CMAKE_CXX_COMPILER} MATCHES mingw)
-  set(BIN_LRCON "lrcon.exe")
-else()
-  set(BIN_LRCON "lrcon")
-endif()
-
 # Lrcon binary stuff
+set(BIN_LRCON "lrcon")
 add_executable(${BIN_LRCON} src/lrcon.cpp )
 target_link_libraries(${BIN_LRCON} ${LRCON_LIBRARIES})
 
@@ -58,25 +53,27 @@ target_link_libraries(${BIN_LRCON} ${LRCON_LIBRARIES})
 ## Building Qrcon ##
 ####################
 
-option(QT_USE_CMAKE_FINDER "Use CMake's finder for Qt4 instead of patched one (worse support for cross-compile)" OFF)
-mark_as_advanced(QT_USE_CMAKE_FINDER)
+find_package(Qt4)
+include(${QT_USE_FILE})
 
-if(QT_USE_CMAKE_FINDER)
-  find_package(Qt4)
-  include(${QT_USE_FILE})
-else()
-  # TODO: patch FindQt4.cmake to take a user-defined spec file, if necessary
-  include("build-aux/FindQt4.cmake")
-  include(${QT_USE_FILE})
-endif()
+# # TODO: ok this is a real pain.  It seems to be almost impossible to get qmake to report the 
+# #   correct values.  It looks like the only way is to define all this crap in one go using ccmake
+# #   and cmake.  
+# #   - The stupid thing refuses to find qmake, despite it also finding moc,uic etc.
+# #   - Won't find *any* of the libs or headers 
+# #     - that's expected since I don't have the win headers here, but why is there
+# #       no way to add the location of windows in?!  
+# #   SO: can I use the toolchain file to define all this bullshit statically, or is it going to
+# #   make me use a script and/or ccmake every time?
+# if(QT_USE_CMAKE_FINDER)
+#   find_package(Qt4)
+#   include(${QT_USE_FILE})
+# else()
+#   include("build-aux/FindQt4.cmake")
+#   include(${QT_USE_FILE})
+# endif()
 
-# When cross-compiling, the right suffix doesn't get added.
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND ${CMAKE_CXX_COMPILER} MATCHES mingw)
-  set(BIN_QRCON "qrcon.exe")
-else()
-  set(BIN_QRCON "qrcon")
-endif()
-
+set(BIN_QRCON "qrcon")
 set(BIN_QRCON_SRCS src/qrcon.cpp src/ServerManager.cpp)
 set(BIN_QRCON_MOC_SRCS src/ServerManager.hpp)
 
@@ -118,10 +115,9 @@ add_doxygen(
 
 if (WANT_DOXYGEN_REBUILD)
   # TODO: add doxygen to the all target
+else()
+  # TODO: check the doc target exists or error
 endif()
-
-
-
 
 ##################
 ## Installation ##
@@ -136,17 +132,13 @@ install(
 
 # TODO: The make doxygen target needs teh .md5 files (for rebuilds), but we want to 
 #       get rid of them for installing.  How?  Custom command?
-# TODO: If SOURCE/doc/ exists, then install it.  Otherwise, don't bother.  Then elsewhere
-#       we should have an if REBUILD_DOXYGEN which causes the doxygen target to run
-#       with make all.  If rebuild, then install BINARY/doc.  This is tricky.  Of couse
-#       I could just build into the source directory...
 
 if (WANT_DOXYGEN_HTML) 
-  #install html directory
+  # if rebuild, install from binary dir else source dir
 endif()
 
 if (WANT_DOXYGEN_PDF)
-  #install pdf
+  # if rebuild, install from binary dir else source dir
 endif()
 
 

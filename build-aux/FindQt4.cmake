@@ -261,6 +261,7 @@ INCLUDE(MacroAddFileDependencies)
 
 SET(QT_USE_FILE ${CMAKE_ROOT}/Modules/UseQt4.cmake)
 
+
 SET( QT_DEFINITIONS "")
 
 SET(QT4_INSTALLED_VERSION_TOO_OLD FALSE)
@@ -274,6 +275,7 @@ MACRO(QT_QUERY_QMAKE outvar invar)
   # information.  Use the same variable for both stdout and stderr
   # to make sure we get the output on all platforms.
   EXECUTE_PROCESS(COMMAND ${QT_QMAKE_EXECUTABLE}
+    ARGS "${QT_QMAKE_SPEC_ARG}"
     WORKING_DIRECTORY  
     ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmpQmake
     OUTPUT_VARIABLE _qmake_query_output
@@ -300,11 +302,23 @@ FIND_PROGRAM(QT_QMAKE_EXECUTABLE NAMES qmake qmake4 qmake-qt4 PATHS
   $ENV{QTDIR}/bin
 )
 
+message("qmake: ${QT_QMAKE_EXECUTABLE}")
+message("qmake spec: ${QT_QMAKE_SPEC_FILE}")
+
+if ("${QT_QMAKE_SPEC_FILE}" EQUAL "")
+  set(QT_QMAKE_SPEC_ARG "")
+else()
+  set(QT_QMAKE_SPEC_ARG "-makefile -spec ${QT_QMAKE_SPEC_FILE}")
+endif()
+
+
 IF (QT_QMAKE_EXECUTABLE)
 
   SET(QT4_QMAKE_FOUND FALSE)
   
   EXEC_PROGRAM(${QT_QMAKE_EXECUTABLE} ARGS "-query QT_VERSION" OUTPUT_VARIABLE QTVERSION)
+
+message("reported version: ${QTVERSION}")
 
   # check for qt3 qmake and then try and find qmake4 or qmake-qt4 in the path
   IF("${QTVERSION}" MATCHES "Unknown")
@@ -316,7 +330,7 @@ IF (QT_QMAKE_EXECUTABLE)
       )
     IF(QT_QMAKE_EXECUTABLE)
       EXEC_PROGRAM(${QT_QMAKE_EXECUTABLE} 
-        ARGS "-query QT_VERSION" OUTPUT_VARIABLE QTVERSION)
+        ARGS "${QT_QMAKE_SPEC_ARG} -query QT_VERSION" OUTPUT_VARIABLE QTVERSION)
     ENDIF(QT_QMAKE_EXECUTABLE)
   ENDIF("${QTVERSION}" MATCHES "Unknown")
 
@@ -369,7 +383,7 @@ IF (QT4_QMAKE_FOUND)
   # Set QT_LIBRARY_DIR
   IF (NOT QT_LIBRARY_DIR)
     EXEC_PROGRAM( ${QT_QMAKE_EXECUTABLE}
-      ARGS "-query QT_INSTALL_LIBS"
+      ARGS "${QT_QMAKE_SPEC_ARG} -query QT_INSTALL_LIBS"
       OUTPUT_VARIABLE QT_LIBRARY_DIR_TMP )
     # make sure we have / and not \ as qmake gives on windows
     FILE(TO_CMAKE_PATH "${QT_LIBRARY_DIR_TMP}" QT_LIBRARY_DIR_TMP)
@@ -396,7 +410,7 @@ IF (QT4_QMAKE_FOUND)
   # ask qmake for the binary dir
   IF (QT_LIBRARY_DIR AND NOT QT_BINARY_DIR)
      EXEC_PROGRAM(${QT_QMAKE_EXECUTABLE}
-       ARGS "-query QT_INSTALL_BINS"
+       ARGS "${QT_QMAKE_SPEC_ARG} -query QT_INSTALL_BINS"
        OUTPUT_VARIABLE qt_bins )
      # make sure we have / and not \ as qmake gives on windows
      FILE(TO_CMAKE_PATH "${qt_bins}" qt_bins)
@@ -406,7 +420,7 @@ IF (QT4_QMAKE_FOUND)
   # ask qmake for the include dir
   IF (QT_LIBRARY_DIR AND NOT QT_HEADERS_DIR)
       EXEC_PROGRAM( ${QT_QMAKE_EXECUTABLE}
-        ARGS "-query QT_INSTALL_HEADERS" 
+        ARGS "${QT_QMAKE_SPEC_ARG} -query QT_INSTALL_HEADERS" 
         OUTPUT_VARIABLE qt_headers ) 
       # make sure we have / and not \ as qmake gives on windows
       FILE(TO_CMAKE_PATH "${qt_headers}" qt_headers)
@@ -417,7 +431,7 @@ IF (QT4_QMAKE_FOUND)
   # ask qmake for the documentation directory
   IF (QT_LIBRARY_DIR AND NOT QT_DOC_DIR)
     EXEC_PROGRAM( ${QT_QMAKE_EXECUTABLE}
-      ARGS "-query QT_INSTALL_DOCS"
+      ARGS "${QT_QMAKE_SPEC_ARG} -query QT_INSTALL_DOCS"
       OUTPUT_VARIABLE qt_doc_dir )
     # make sure we have / and not \ as qmake gives on windows
     FILE(TO_CMAKE_PATH "${qt_doc_dir}" qt_doc_dir)
@@ -427,7 +441,7 @@ IF (QT4_QMAKE_FOUND)
   # ask qmake for the mkspecs directory
   IF (QT_LIBRARY_DIR AND NOT QT_MKSPECS_DIR)
     EXEC_PROGRAM( ${QT_QMAKE_EXECUTABLE}
-      ARGS "-query QMAKE_MKSPECS"
+      ARGS "${QT_QMAKE_SPEC_ARG} -query QMAKE_MKSPECS"
       OUTPUT_VARIABLE qt_mkspecs_dirs )
     # do not replace : on windows as it might be a drive letter
     # and windows should already use ; as a separator
@@ -442,7 +456,7 @@ IF (QT4_QMAKE_FOUND)
   # ask qmake for the plugins directory
   IF (QT_LIBRARY_DIR AND NOT QT_PLUGINS_DIR)
     EXEC_PROGRAM( ${QT_QMAKE_EXECUTABLE}
-      ARGS "-query QT_INSTALL_PLUGINS"
+      ARGS "${QT_QMAKE_SPEC_ARG} -query QT_INSTALL_PLUGINS"
       OUTPUT_VARIABLE qt_plugins_dir )
     # make sure we have / and not \ as qmake gives on windows
     FILE(TO_CMAKE_PATH "${qt_plugins_dir}" qt_plugins_dir)
