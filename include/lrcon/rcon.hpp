@@ -10,19 +10,10 @@ See \ref p_RCON "RCON Protocol" for usage.
 
 \todo Test with other RCON server types.
 
-\todo Buffering the data makes the program seem slow.  Is there a way we can ostream it
-      maybe?  This is actually prety irrelevant after removing the timeouts.  The only
-      problem is split packets where we could print out as we get it.  It also gives 
-      the possiblity that we should make it easier to do this in the API -- the user
-      code could know that it will receive a multi-packet sequence and then organise
-      its timeouts accordingly.
+\todo Configurable timeouts (dependancies in common probably)
 
-\todo I could use common::read_to_buffer in here more I think.
-
-\todo Would it be faster to read the entire lot into a buffer and then use endian_memcpy
-      to sort it out?  Perhaps actually it's not such a problem because the packets get
-      concatenated somehow in tcp... or do they... meh it's too late.
 */
+
 
 
 #ifndef RCON_HPP_58dx55q1
@@ -152,20 +143,40 @@ namespace rcon {
         write(c.socket());
       }
       
+      //! \brief Bitmask result of the read operation.
+      typedef enum {
+        //! You should call read() again.
+        read_again = 1 << 0, 
+        //! There is no more data to read.
+        read_finished = 1 << 1,
+        //! There was a timeout
+        read_timeout = 1 << 2
+      } read_result;
+      
       /*! 
       \brief Read values for the data members from the socket.
+      
+      This function should be called in a loop: each subsequent call will 
+      append data.  The first call should always have error_on_timeout = true.
+      
       \throws recv_error      failures from recv() and erroneus timeouts.
       \throws response_error  the command id was not one of command_id_t
 
-      \param error_on_timeout  causes an recv_error if there is a timeout.
+      \param first_read        if there is a timeout and it  is first_read
+                               then the bitmask returned is \b not and'ed
+                               with read_finished.
+      \param error_on_timeout  causes an recv_error throw if there is a timeout;
+                               otherwise \link read_timeout \endlink is returned.
       
-      \returns \c true if there is more to read; \c false otherwise.
+      \returns See \link read_result \endlink.  Summary read_again if more data
+               could be there; read_finished if no data could be there;
+               (read_finished & read_timeout) if there was a timeout.
       
       \warning The assumption is that there will only be more data if the entire 
-               payload is full up.  This is not documented and actually rather
-               hard to test since servers very rarely return split-packets.
+               payload is full up.  This is not documented.  To ignore this 
+               assumption read until read_timeout, instead of (read_finished & read_timeout)
       */
-      bool read(int socket, bool error_on_timeout = true) {
+      read_result read(int socket, bool first_read, bool error_on_timeout) {
         RCON_DEBUG_MESSAGE("Reading a packet.");
         
         /// \todo Needed before every read?
@@ -176,14 +187,46 @@ namespace rcon {
             throw timeout_error("timed out before any data was read.");
           }
           else {
-            return false;
+            if (first_read) {
+              return read_timeout;
+            }
+            else {
+              return read_finished & read_timeout;
+            }
           }
         }
+        
+        /// \todo Timeouts are too hard to configure here.
         
         // Two ints, two strings.
         const size_t max_packet_size = sizeof(int32_t) * 2 + command_base::max_string_length * 2;
         // Two ints, two nulls.
         const size_t min_packet_size = sizeof(int32_t) * 2 + 1 + 1;
+        
+        /*!
+        \par Regarding Multiple Packets
+        
+        \todo I *need* to test this.  Aparently a 32 player server will reutrn
+              multipacket messages for status.
+        \todo Be sure that my method of determining the read_finished is accurate.
+        \todo Unit test both things.
+        
+        ``Make sure that you code the ability to handle multiple response "packets". With a 
+        32-player server, it will use these commonly for status commands (for instance), 
+        just as HLDS often did. Also, keep in mind that you won't be able to read the whole 
+        "packet" at one time -- you need to keep reading in a loop until you receive the 
+        entire packet before processing it.''
+        
+        So: try making a 32 bot server and see what happens?
+        
+        http://rconed.sourceforge.net/ - might help?  Seems to just do multiple reads and
+          timeout.  I need to optimise this though; can I exit immediately if I detect that 
+          the packet is small?
+        */
+
+        /// \todo Convert all this to read_to_buffer(dest, size = max_packet_size).
+        ///       and then parse the buffer.  This should make this func much easier
+        ///       on the eye.
         
         int32_t size;
         if (common::read_type(socket, size) == common::read_type_error) {
@@ -253,16 +296,7 @@ namespace rcon {
         }
         
         // there might be more to get
-        return (size == max_packet_size);
-      }
-      
-      //! \brief Reads all values ino the payload string until it reaches a timeout.
-      void read_all(int sock) {
-        payload_ = "";
-        bool more = read(sock, true);
-        while (more) {
-          more = read(sock, false);
-        }
+        return (size == max_packet_size) ? read_again : read_finished;
       }
       
       //! Send *this as an RCON packet.
@@ -443,7 +477,12 @@ namespace rcon {
       /*! 
       \brief Initialise and check for validity
       
+      This will read multiple packets where possible.
+      
       \pre request_id != \link auth_command::auth_denied_req_id \endlink.
+      
+      \note You should avoid making the request id == \link auth_command::auth_send_req_id \endlink for
+            safety, however it is not required.
       
       \param command     text of the command to send
       \param send_id     an arbitrary value which will be echoed back to the client except 
@@ -453,9 +492,6 @@ namespace rcon {
       \throws revc_error      any data read error
       \throws response_error  the server did not mirror the request id and it was not a failed auth.
       \throws send_error      any send error
-      
-      \note You should avoid making the request id == \link auth_command::auth_send_req_id \endlink for
-            safety, however it is not required.
       
       \post \link valid() \endlink == true
       \post \link auth_lost() \endlink == false
@@ -475,25 +511,27 @@ namespace rcon {
         get_reply(conn, false);
       }
       
-      //! Checks the request id was mirrord back correctly.
+      //! \brief Checks the request id was mirrored back correctly.
       bool valid() const { return send_id() == receive_id(); }
       
-      //! If a auth denied response was recieved or the command id recieved was an auth response.
+      //! \brief If a auth denied response was recieved or the command id recieved was an auth response.
       bool auth_lost() const { 
         return receive_id() == auth_command::auth_denied_req_id 
                || command_id() == command_base::auth_response;
       }
       
     private:
-      //! Will read multiple packets maybe
+      //! \brief Reads all incoming packets into the data store.
       void get_reply(common::connection_base &conn, bool check_validity = false) {
         payload_ = "";
         bool error_on_timeout = true;
-        bool more = false;
+        bool is_first_read = true;
+        read_result r
         do {
-          more = read(conn.socket(), error_on_timeout);
+          error_on_timeout = is_first_read;
+          r = read(conn.socket(), is_first_read, error_on_timeout);
           
-          if (check_validity) {
+          if (check_validity && ! (r & read_timeout)) {
             if (auth_lost()) {
               throw auth_error("authentication was lost.");
             }
@@ -502,8 +540,8 @@ namespace rcon {
             }
           }
           
-          error_on_timeout = false;
-        } while (more);
+          is_first_read = false;
+        } while (! (r & read_finished));
       }
   };
   

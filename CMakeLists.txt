@@ -44,7 +44,7 @@ mark_as_advanced(WANT_DOXYGEN_PDF_GRAPHICS WANT_DOXYGEN_HTML_GRAPHICS)
 
 ###########################
 ## Building normal stuff ##
-##########################
+###########################
 
 # Lrcon binary stuff
 set(BIN_LRCON "lrcon")
