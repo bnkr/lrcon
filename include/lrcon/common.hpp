@@ -354,33 +354,6 @@ namespace common {
         /// \todo Get this working on windows
         ///       http://www.codeguru.com/forum/showthread.php?t=312668 - could help
 #ifndef LRCON_WINDOWS
-        /**
-        \todo 
-        
-        http://www.developerweb.net/forum/showthread.php?p=13486
-        
-        Some example code suggested that after select worked (ie, no timeout and 
-        no error; select() returns > 0), I should do this:
-        
-          // Socket selected for write 
-          lon = sizeof(int); 
-          // checks if, at the socket level (SOL_SOCKET), there is an error (SO_ERROR)
-          // set in the options.  Optval is where it goes, lon is just the length of 
-          // the output (valopt).
-          if (getsockopt(soc, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon) < 0) { 
-            fprintf(stderr, "Error in getsockopt() %d - %s\n", errno, strerror(errno)); 
-            exit(0); 
-          } 
-          // Check the value returned... 
-          if (valopt) { 
-            fprintf(stderr, "Error in delayed connection() %d - %s\n", valopt, strerror(valopt) ); 
-            exit(0); 
-          } 
-          
-        
-        
-        **/
-        
         COMMON_DEBUG_MESSAGE("Setting nonblock.");
         
         int flags = fcntl(socket_, F_GETFL, 0);
@@ -408,6 +381,18 @@ namespace common {
           /// \todo Coluld do with a timeout_error.
           throw connection_error("timeout when connecting to host.");
         }
+        
+        socklen_t option_value_size = sizeof(int);
+        int option_value;
+        if (getsockopt(socket_, SOL_SOCKET, SO_ERROR, (void*)(&option_value), &option_value_size) < 0) { 
+          errno_throw<connection_error>("checking for socket error with getsockopt() failed");
+        } 
+        assert(option_value_size == sizeof(option_value));
+        
+        if (option_value) { 
+          errno = option_value;
+          errno_throw<connection_error>("delayed connection failed");
+        } 
         
         COMMON_DEBUG_MESSAGE("Setting blocking again.");
         flags = fcntl(socket_, F_GETFL, 0);
