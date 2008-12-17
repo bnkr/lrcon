@@ -15,11 +15,12 @@ add_subdirectory("tests")
 
 # For different types of CMAKE_BUILD_TYPE
 # TODO: it seems that ccmake just overwrites this stuff - 
-#       how can I put a default in there?
-set(CMAKE_C_FLAGS_DEBUG "-g -Wall")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall")
-set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall")
+#       how can I put a default in there?  Or do I overwrite
+#       ccmake?  It's not clear at all!
+# set(CMAKE_C_FLAGS_DEBUG "-g -Wall")
+# set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall")
+# set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
+# set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall")
 
 # Global consts for libraries etc.
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -57,6 +58,10 @@ target_link_libraries(${BIN_LRCON} ${LRCON_LIBRARIES})
 
 find_package(Qt4)
 include(${QT_USE_FILE})
+
+# TODO: remove this when I've worked out how to define it per-compile (or better, to default
+#       the debug flags)
+add_definitions("-DRCON_DEBUG_MESSAGES -DQRCON_DEBUG_MESSAGES")
 
 # # TODO: ok this is a real pain.  It seems to be almost impossible to get qmake to report the 
 # #   correct values.  It looks like the only way is to define all this crap in one go using ccmake

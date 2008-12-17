@@ -5,9 +5,12 @@
 
 #include <lrcon/rcon.hpp>
 
+#include <QMessageBox>
 #include <QObject>
 #include <QLineEdit>
 #include <QTextEdit>
+
+#include <exception>
 
 /*!
 
@@ -35,6 +38,9 @@ class ServerManager : public QObject {
     
   signals:
     void connected();
+    
+  private:
+    void generalError(const char *header, const char *text, QMessageBox::Icon i = QMessageBox::Warning); 
 };
 
 

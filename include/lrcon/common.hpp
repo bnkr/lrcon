@@ -350,9 +350,6 @@ namespace common {
           errno_throw<connection_error>("socket() failed");
         }
         
-        // Add  O_NONBLOCK to the fd's flags
-        /// \todo Get this working on windows
-        ///       http://www.codeguru.com/forum/showthread.php?t=312668 - could help
 #ifndef LRCON_WINDOWS
         COMMON_DEBUG_MESSAGE("Setting nonblock.");
         
@@ -407,6 +404,9 @@ namespace common {
         }
         
 #else 
+        /// \todo Get this working on windows
+        ///       http://www.codeguru.com/forum/showthread.php?t=312668 - could help
+        
         COMMON_DEBUG_MESSAGE("Connecting socket.");
         if (connect(socket_, server.address(), server.address_len()) == -1) {
           errno_throw<connection_error>("connect() failed");
