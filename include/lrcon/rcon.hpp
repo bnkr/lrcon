@@ -143,29 +143,28 @@ namespace rcon {
         write(c.socket());
       }
       
-      //! \brief Bitmask result of the read operation.
+      //! \brief Result of the read operation.
       typedef enum {
         //! You should call read() again.
-        read_again = 1 << 0, 
-        //! There is no more data to read.
-        read_finished = 1 << 1,
+        read_again,
         //! There was a timeout
-        read_timeout = 1 << 2
+        read_timeout,
+        //! It was detected that there is no more data
+        read_finished
       } read_result;
       
       /*! 
       \brief Read values for the data members from the socket.
       
-      This function should be called in a loop: each subsequent call will 
-      append data.  The first call should always have error_on_timeout = true.
+      This function should be called in a loop: each subsequent call will append 
+      data.  The first call should always have \link error_on_timeout \endlink = 
+      \c true and the next should have \link timeout_means_finished \endlink 
+      = \c true
       
       \throws recv_error      failures from recv() and erroneus timeouts.
       \throws response_error  the command id was not one of command_id_t
 
-      \param first_read        if there is a timeout and it  is first_read
-                               then the bitmask returned is \b not and'ed
-                               with read_finished.
-      \param error_on_timeout  causes an recv_error throw if there is a timeout;
+      \param error_on_timeout  causes an \link recv_error \endlink throw if there is a timeout;
                                otherwise \link read_timeout \endlink is returned.
       
       \returns See \link read_result \endlink.  Summary read_again if more data
@@ -176,7 +175,7 @@ namespace rcon {
                payload is full up.  This is not documented.  To ignore this 
                assumption read until read_timeout, instead of (read_finished & read_timeout)
       */
-      read_result read(int socket, bool first_read, bool error_on_timeout) {
+      read_result read(int socket, bool error_on_timeout = true) {
         RCON_DEBUG_MESSAGE("Reading a packet.");
         
         /// \todo Needed before every read?
@@ -187,12 +186,7 @@ namespace rcon {
             throw timeout_error("timed out before any data was read.");
           }
           else {
-            if (first_read) {
-              return read_timeout;
-            }
-            else {
-              return read_finished & read_timeout;
-            }
+            return read_timeout;
           }
         }
         
@@ -207,21 +201,13 @@ namespace rcon {
         \par Regarding Multiple Packets
         
         \todo I *need* to test this.  Aparently a 32 player server will reutrn
-              multipacket messages for status.
+              multipacket messages for status.  Bot server is no good; the pakcet
+              is way under the limit (1133/8192).
         \todo Be sure that my method of determining the read_finished is accurate.
+              - if it is not, then I should have an option to ignore split packets
+                because it slows everything down so much.
         \todo Unit test both things.
         
-        ``Make sure that you code the ability to handle multiple response "packets". With a 
-        32-player server, it will use these commonly for status commands (for instance), 
-        just as HLDS often did. Also, keep in mind that you won't be able to read the whole 
-        "packet" at one time -- you need to keep reading in a loop until you receive the 
-        entire packet before processing it.''
-        
-        So: try making a 32 bot server and see what happens?
-        
-        http://rconed.sourceforge.net/ - might help?  Seems to just do multiple reads and
-          timeout.  I need to optimise this though; can I exit immediately if I detect that 
-          the packet is small?
         */
 
         /// \todo Convert all this to read_to_buffer(dest, size = max_packet_size).
@@ -295,11 +281,11 @@ namespace rcon {
           RCON_DEBUG_MESSAGE("  Payload: '" << payload_ << "' (used " << total_payload_size << "/" << max_payload_size << " bytes)");
         }
         
-        // there might be more to get
-        return (size == max_packet_size) ? read_again : read_finished;
+        /// \todo This needs to be tested.
+        return (total_payload_size == max_payload_size) ? read_again : read_finished ;
       }
       
-      //! Send *this as an RCON packet.
+      //! \brief Send *this as an RCON packet.
       void write(int socket) {
         // int32 + int32 + payload.length + null + null;
         int32_t size = 8 + payload_.length() + 1 + 1;
@@ -430,10 +416,11 @@ namespace rcon {
       */
       void get_reply(common::connection_base &conn) {
         payload_ = "";
-        read(conn.socket(), true);
+        const bool error_on_timeout = true;
+        read(conn.socket(), error_on_timeout);
         if (receive_id() != send_id() || command_id() != command_base::exec_response) {
           throw proto_error("request ID was not returned by the server."); /// \todo should it be revc_error?
-        }
+        } 
         
 #ifdef RCON_DEBUG_MESSAGE
         if (payload_ != "") {
@@ -442,7 +429,7 @@ namespace rcon {
         }
 #endif 
         
-        read(conn.socket(), true);
+        read(conn.socket(), error_on_timeout);
         if (command_id() != command_base::auth_response) {
           throw proto_error("the server did not return an authorisation response.");
         }       
@@ -524,14 +511,16 @@ namespace rcon {
       //! \brief Reads all incoming packets into the data store.
       void get_reply(common::connection_base &conn, bool check_validity = false) {
         payload_ = "";
-        bool error_on_timeout = true;
+        // Timeout is an error on the first read
         bool is_first_read = true;
-        read_result r
+        read_result r;
         do {
-          error_on_timeout = is_first_read;
-          r = read(conn.socket(), is_first_read, error_on_timeout);
+          r = read(conn.socket(), is_first_read);
           
-          if (check_validity && ! (r & read_timeout)) {
+          // Timeout added no more data so no need to check again.
+          if (r == read_timeout) break;
+          
+          if (check_validity) {
             if (auth_lost()) {
               throw auth_error("authentication was lost.");
             }
@@ -541,7 +530,7 @@ namespace rcon {
           }
           
           is_first_read = false;
-        } while (! (r & read_finished));
+        } while (r == read_again);
       }
   };
   
