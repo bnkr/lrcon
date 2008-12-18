@@ -61,7 +61,7 @@ include(${QT_USE_FILE})
 
 # TODO: remove this when I've worked out how to define it per-compile (or better, to default
 #       the debug flags)
-add_definitions("-DRCON_DEBUG_MESSAGES -DQRCON_DEBUG_MESSAGES")
+#add_definitions("-DRCON_DEBUG_MESSAGES -DQRCON_DEBUG_MESSAGES")
 
 # # TODO: ok this is a real pain.  It seems to be almost impossible to get qmake to report the 
 # #   correct values.  It looks like the only way is to define all this crap in one go using ccmake

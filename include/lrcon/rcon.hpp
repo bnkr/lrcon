@@ -29,10 +29,8 @@ See \ref p_RCON "RCON Protocol" for usage.
 #include <stdexcept>
 #include <iostream>
 
-#ifdef RCON_DEBUG_MESSAGES 
-#  include <iostream>
-#  define RCON_DEBUG_MESSAGE(x__)\
-   std::cout << __FUNCTION__ << "(): " << x__ << std::endl;
+#if defined(RCON_DEBUG_MESSAGES)
+#  define RCON_DEBUG_MESSAGE(x__) LRCON_DEBUG_MESSAGE(x__)
 #else
 #  define RCON_DEBUG_MESSAGE(x__)
 #endif
@@ -128,6 +126,12 @@ namespace rcon {
       const std::string &data() const { return payload_; }
     
     protected:
+      // Three ints, two strings.
+      static const size_t max_packet_size = sizeof(int32_t) * 3 + command_base::max_string_length * 2;
+      // Three ints, two nulls.
+      static const size_t min_packet_size = sizeof(int32_t) * 3 + 1 + 1;
+
+      
       //! \pre this->command_id_ is one of command_id_t
       command_id_t command_id() const { return static_cast<command_id_t>(command_id_); }
       int32_t receive_id() const { return recvd_request_id_; } 
@@ -192,15 +196,12 @@ namespace rcon {
         
         /// \todo Timeouts are too hard to configure here.
         
-        // Two ints, two strings.
-        const size_t max_packet_size = sizeof(int32_t) * 3 + command_base::max_string_length * 2;
-        // Two ints, two nulls.
-        const size_t min_packet_size = sizeof(int32_t) * 3 + 1 + 1;
         
         /*!
         \todo I *need* to test this.  Aparently a 32 player server will reutrn
               multipacket messages for status.  Bot server is no good; the pakcet
-              is way under the limit (1133/8192).
+              is way under the limit (1133/8192).  Using a really long say doesn't
+              work: it trims it...maybe a really long echo and an exec somefile?
         */
 
         using common::read_to_buffer;
@@ -210,7 +211,7 @@ namespace rcon {
         std::size_t bytes = read_to_buffer(socket, &buffer, max_packet_size);
         buffer[max_packet_size - 1] = '\0';
         if (bytes < min_packet_size) {
-          throw proto_error("too little data was sent");
+          throw response_error("too little data was sent");
         }
         else if (bytes > max_packet_size) {
           std::cerr << "warning: too much data was sent." << std::endl;
@@ -248,13 +249,13 @@ namespace rcon {
         // Includes the nulls.
         std::size_t strings_part_length = bytes - min_packet_size;
         std::size_t old_size = payload_.length();
-        payload_.resize(payload_.length() + strings_part_length);
+//         payload_.resize(payload_.length() + strings_part_length);
         
         // First string
         std::size_t buffered_string_length = std::strlen(&buffer[idx]);
-        std::memcpy(&payload_[old_size], &buffer[idx], buffered_string_length);
+        payload_ += &buffer[idx];
         
-        RCON_DEBUG_MESSAGE("* First string (" << std::strlen(&payload_[old_size]) << "):\n'" << &payload_[old_size] << "'");
+        RCON_DEBUG_MESSAGE("* First string (" << buffered_string_length << "):\n'" << &payload_[old_size] << "'");
         
         assert(buffer[idx + buffered_string_length] == '\0'); 
         
@@ -265,30 +266,33 @@ namespace rcon {
         if (idx >= max_packet_size-1) {
           std::cerr << "warning: the data was not null-terminated." << std::endl;
         }
+        else if (idx >= max_packet_size - max_string_length) {
+          std::cerr << "warning: a string was too long." << std::endl;
+        }
         
         old_size += buffered_string_length;
         buffered_string_length = std::strlen(&buffer[idx]);
-        std::memcpy(&payload_[old_size], &buffer[idx], buffered_string_length);
+        payload_ += &buffer[idx];
         
-        payload_[old_size + buffered_string_length + 1] = '\0';
+        assert(payload_[old_size + buffered_string_length] == '\0');
         
-        RCON_DEBUG_MESSAGE("* Second string (" << std::strlen(&payload_[old_size]) << "):\n'" << &payload_[old_size] << "'");
+        RCON_DEBUG_MESSAGE("* Second string (" << buffered_string_length << "):\n'" << &payload_[old_size] << "'");
         
         // +1 for the null at the end of str2
         assert(bytes == idx + buffered_string_length + 1);
 
         /// \todo This needs to be tested.  If this is not a ccorrect way of 
-        ///       determining the end of data, then it is not, then I should 
-        ///       have an option to ignore split packets because it slows 
-        ///       everything down so much.
+        ///       determining the end of data, then I should have an option 
+        ///       to ignore split packets because it slows everything down 
+        ///       so much.
 
         return (bytes == max_packet_size) ? read_again : read_finished ;
       }
       
       //! \brief Send *this as an RCON packet.
       void write(int socket) {
-        // int32 + int32 + payload.length + null + null;
-        int32_t size = 8 + payload_.length() + 1 + 1;
+        // Size is NOT including the size we are currently summing up report.
+        int32_t size = sizeof(int32_t) * 2 + payload_.length() + sizeof(char) + sizeof(char);
         
         RCON_DEBUG_MESSAGE("Data sending properties: ");
         RCON_DEBUG_MESSAGE("  Packet: " << size);

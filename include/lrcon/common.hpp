@@ -52,8 +52,18 @@
 #include <stdexcept>
 #include <iostream>
 
-#if defined(RCON_DEBUG_MESSAGES) || defined(QUERY_DEBUG_MESSAGES) || defined(COMMON_DEBUG_MESSAGES)
-#  define COMMON_DEBUG_MESSAGE(x__) std::cout << x__ << std::endl;
+
+#if defined(COMMON_DEBUG_MESSAGES) || defined(RCON_DEBUG_MESSAGES ) \
+    || defined(QUERY_DEBUG_MESSAGES) 
+#  include <iostream>
+#  define LRCON_DEBUG_MESSAGE(x__)\
+   std::cout << __FUNCTION__ << "(): " << x__ << std::endl;
+#else
+#  define LRCON_DEBUG_MESSAGE(x__)
+#endif
+
+#if defined(COMMON_DEBUG_MESSAGES)
+#  define COMMON_DEBUG_MESSAGE(x__) LRCON_DEBUG_MESSAGE(x__)
 #else
 #  define COMMON_DEBUG_MESSAGE(x__)
 #endif
