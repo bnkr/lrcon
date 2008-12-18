@@ -34,7 +34,7 @@ void print_usage(const char *pname) {
       << pname << " -p password [OPTIONS] command [args]...\n"
       "Executes command with args on an RCON server and retrieve the output.  Command\n"
       "can be a dash (-) to trigger reading from stdin.  The program automatically\n" 
-      "reads from stdin if it was redirected.\n\n"
+      "reads from stdin on Unix if it was redirected.\n\n"
       "  -p  password (required argument)\n"
       "  -P  port (default: 27015)\n"
       "  -s  server (default: localhost)\n"
@@ -122,8 +122,9 @@ int main(const int argc, const char *const argv[]) {
       else if (strcmp(argv[i], "-") == 0) {
         read_from_stdin = true;
       }
-      else if (*argv[i] != '-') {
+      else if (strcmp(argv[i], "--") == 0) {
         // end of arguments
+        ++i;
         break;
       }
       ++i;
