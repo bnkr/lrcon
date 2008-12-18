@@ -5,7 +5,8 @@ function(add_doxygen target_name template_file extra_commands)
   # TODO: check confs has a couple of required fields defined.
   # TODO: if latex is enabled, then add the latex makefile to make doxygen - we need to 
   #       grep the latex_output and output
-  # TODO: if latex, find dvi2ps and all the other crap it needs; make as well.
+  # TODO: if latex, find dvi2ps and all the other crap it needs
+  # TODO: if pdf, then add the makefile command as a target 
   # TODO: we must deal with it gracefully if if all breaks massively (have
   #         an overrides-overrides maybe?  Or use echo?)
   # TODO: set dot path if WANT_DOXYGEN_GRAPHICS (blah blah put in ccmakevars)
@@ -26,7 +27,6 @@ function(add_doxygen target_name template_file extra_commands)
   # TODO: obv. this is broken - need to know the outputdir first
   set(latex_directory ${CMAKE_BINARY_DIR}/doc/latex/)
 
-  # TODO: only do this is latex is enabled
 #   COMMAND make
 #   WORKING_DIRECTORY ${latex_directory}
 #   maybehave the current target called doxygen-generate,
@@ -40,4 +40,10 @@ function(add_doxygen target_name template_file extra_commands)
   )
     
 endfunction()
+
+macro(doxygen_add_directives directive_string directives_list)
+  foreach(iter ${directives_list})
+    set(${directive_string} "${${directive_string}}${iter}\n")
+  endforeach()
+endmacro()
 

@@ -30,14 +30,24 @@ else()
 endif()
 
 # General options
-option(WANT_DOXYGEN_HTML "Install (generate if necessary) HTML made by doxygen" YES)
-option(WANT_DOXYGEN_PDF "Install (generate if necessary) PDF from doxygen (needs pdfLaTeX)" NO)
+option(WANT_DOCS "Install documentation - when off, all other docs options are off." YES)
+option(WANT_DOXYGEN_HTML "Install HTML made by doxygen" YES)
+option(WANT_DOXYGEN_PDF "Install PDF from doxygen (needs pdfLaTeX)" NO)
 option(WANT_DOXYGEN_REBUILD "Rebuild doxygen stuff instead of using what's in the tarball (needs doxygen)" NO)
 
 option(WANT_DOXYGEN_PDF_GRAPHICS "Use the graphical stuff in pdfs (needs dot, LaTeX graphics converters)" YES)
 option(WANT_DOXYGEN_HTML_GRAPHICS "Use the graphical stuff in htmls (needs dot)" YES)
 
-mark_as_advanced(WANT_DOXYGEN_PDF_GRAPHICS WANT_DOXYGEN_HTML_GRAPHICS)
+set(DOXYGEN_DOXYFILE_TEMPLATE "${CMAKE_SOURCE_DIR}/Doxyfile.default" CACHE STRING 
+    "Base doxyfile.  Mostly useful for developers.  Certain vars will be overwritten (in/output paths mostly).")
+
+mark_as_advanced(
+  DOXYGEN_DOXYFILE_TEMPLATE 
+  WANT_DOXYGEN_PDF_GRAPHICS 
+  WANT_DOXYGEN_HTML_GRAPHICS 
+  WANT_DOXYGEN_HTML 
+  WANT_DOXYGEN_PDF
+)
 
 # Set it to itself so that this var can be in the toolchain file
 # set(QT_QMAKE_SPEC_FILE "${QT_QMAKE_SPEC_FILE}" CACHE STRING 
@@ -94,40 +104,35 @@ target_link_libraries(${BIN_QRCON} ${QT_LIBRARIES} ${LRCON_LIBRARIES})
 ## Building Doxygen ##
 ######################
 
-set(DOXYGEN_DOXYFILE_TEMPLATE "${CMAKE_SOURCE_DIR}/Doxyfile.default" CACHE STRING 
-    "Base doxyfile.  Certain vars will be overwritten (in/output paths mostly).")
-
-# TODO: Generate this string with a lib function; pretend it's a struct.
+doxygen_add_directives(DOXYGEN_FLAGS "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/;INPUT = ${CMAKE_SOURCE_DIR}/include/")
+doxygen_add_directives(DOXYGEN_FLAGS "PROJECT_NAME = ${PROJECT_NAME}")
+doxygen_add_directives(DOXYGEN_FLAGS "PROJECT_NUMBER = ${PROJECT_VERSION}")
 # TODO: for a maintainer build, doxygen should do into the source tree since
 #       I need to distribute it as part of the tarball.  Perhaps I can solve
 #       some of this with CPack?  Maybe CPack can manually add in built 
-#       doxygen to the source tarball...
-set(
-DOXYGEN_EXTRAS "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/ 
-                INPUT = ${CMAKE_SOURCE_DIR}/include/ 
-                PROJECT_NAME = ${PROJECT_NAME} 
-                PROJECT_NUMBER = ${PROJECT_VERSION} 
-                OUTPUT_DIRECTORY = ${CMAKE_BINARY_DIR}/doxygen/ "
-)
+#       doxygen to the source tarball... or just follow a symlink?
+doxygen_add_directives(DOXYGEN_FLAGS "OUTPUT_DIRECTORY = ${CMAKE_BINARY_DIR}/doxygen/")
 
 if (WANT_DOXYGEN_PDF)
-  set(DOXYGEN_EXTRAS "${DOXYGEN_EXTRAS} \nGENERATE_LATEX = yes \n")
+  doxygen_add_directives(DOXYGEN_FLAGS "GENERATE_LATEX = yes")
 endif()
 
 if (WANT_DOXYGEN_HTML) 
-  set(DOXYGEN_EXTRAS "${DOXYGEN_EXTRAS} \nGENERATE_HTML = yes \n")
+  doxygen_add_directives(DOXYGEN_FLAGS "GENERATE_HTML = yes")
 endif()
 
 add_doxygen(
   doxygen
   ${DOXYGEN_DOXYFILE_TEMPLATE}
-  ${DOXYGEN_EXTRAS}
+  ${DOXYGEN_FLAGS}
 )
 
 if (WANT_DOXYGEN_REBUILD)
   # TODO: add doxygen to the all target
-else()
-  # TODO: check the doc target exists or error
+elseif(WANT_DOXYGEN_PDF OR WANT_DOXYGEN_HTML)
+  if (NOT EXISTS "${CMAKE_SOURCE_DIR}/doc/")
+    message(FATAL_ERROR "Documentation doesn't exist yet; set WANT_DOXYGEN_REBUILD or unset WANT_DOCS")
+  endif()
 endif()
 
 ##################
@@ -135,21 +140,30 @@ endif()
 ##################
 
 # Documentation
-# TODO: this goes to the wrong place: usr/local/doc/netz; should be /usr/local/share/doc 
+# TODO: this goes to the wrong place: usr/local/doc/lrcon; should be /usr/local/share/doc/lrcon/
+
 install(
   FILES README COPYING 
-  DESTINATION doc/netz/
+  DESTINATION doc/lrcon/
 )
-
+  
 # TODO: The make doxygen target needs teh .md5 files (for rebuilds), but we want to 
 #       get rid of them for installing.  How?  Custom command?
-
+  
 if (WANT_DOXYGEN_HTML) 
-  # if rebuild, install from binary dir else source dir
+  if (WANT_DOXYGEN_REBUILD) 
+    # install from binarydir
+  else()
+    # install from source dir
+  endif()
 endif()
 
 if (WANT_DOXYGEN_PDF)
-  # if rebuild, install from binary dir else source dir
+  if (WANT_DOXYGEN_REBUILD) 
+    # install from binarydir
+  else()
+    # install from source dir
+  endif()
 endif()
 
 # Header files
@@ -184,3 +198,4 @@ install(TARGETS ${BIN_QRCON} RUNTIME DESTINATION bin)
 #       - This should be done by a release script
 #       - CPack should (if possible) take the docs which are in the binary dir. I'm
 #         sure this is at least hackable.
+
