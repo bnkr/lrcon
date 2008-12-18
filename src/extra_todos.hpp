@@ -4,14 +4,6 @@
 \file
 \brief File to add doxygen todos.
 
-\todo Better doxygen support:
-      - Add doc/ to the docdir install target.  I'm not sure how to do this well
-        because doc/ doesn't exist until dist has already run, and then we can't
-        be sure of what is actually in there.  Normally, it's html but there
-        might also be man and latex.
-
-\todo An option should be provided to turn on and off debug messages in configure.
-
 \todo Make timeouts dynamic.
     - class timeout 
     - default one in conn, which can be changed by the user
@@ -26,27 +18,4 @@
       things in a library.  Much nicer to give the user a way to check for them,
       and these assertion type things can be turned off.
 
-\todo Investigate making this work on windows.  The API actually seems pretty 
-      similar.
-
-\todo For unit testing I need to write a program where I can use nc in order to
-      send binary data to the program.  Something like writebin hex_values...
-      and on stdout it will write.  Then writebin | nc whatever.  Not sure how
-      to make it return the data tho without also writing a server...  
-
-\todo It would be cheaper to make a lookup table to convert the endianness.  I only
-      need it for int32 --- actually only for certain values too (request_id values,
-      command_id values).
-
-\todo I need to test split packets of RCON.  I really don't know how it is organised.
-      Perhaps I could invent an eventscript which would return a massive ammount 
-      of data (where massive >= max_payload).
-
-\todo I should test fringe values for the sizes of the strings, because there's a bad
-      performance case when read_data == max_data but no more packets are coming.  It's
-      quite unlikely, but I should test anyway.  Hopefully the server will actually say 
-      something about it.
-
-\todo Check the autoconf docs for info on endianness --- I'm pretty sure you can 
-      check it at configure-time (portably also)
 */

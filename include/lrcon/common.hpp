@@ -510,8 +510,8 @@ namespace common {
   /// \todo These functions are a mess!  Stick with:
   ///       - read_to_buffer (should be in connection)
   ///       - send_from_buffer (should be in connection)
-  ///       - var_from_buffer = read_type, but from a buffer
-  ///       - var_to_buffer = send_type but to a buffer
+  ///       - var_from_buffer = read_type, but from a buffer (static of connection?)
+  ///       - var_to_buffer = send_type but to a buffer  (static of connection?)
   /// 
   /// This is all used by query tho.
   /// 
@@ -532,7 +532,11 @@ namespace common {
     return read_to_buffer<recv_error>(socket_fd, buff, buffsz, errormsg);
   }
   
-  
+  inline int send_from_buffer(int socket_fd, const void *buff, std::size_t buffsz, const char *errormsg = "send() failed") {
+    //int sent = send(socket_fd, (char *) &v, buffsz, 0);
+    
+    throw std::logic_error("Not implemented yet.");
+  }
   
   
   

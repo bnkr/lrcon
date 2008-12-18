@@ -3,12 +3,6 @@
 #include <QString>
 
 void ServerManager::commandEntered() {
-  /// \todo this should only be declared once actually, but what
-  ///       if it kicks you off?  Is there some timout?  Are you
-  ///       authed forever-- what!?!  I think I will need a
-  ///       reconnect() method.  Implies we should store the 
-  ///       data from those fields tho.
-
   if (command_.text().length() == 0) {
     return;
   }
@@ -20,18 +14,20 @@ void ServerManager::commandEntered() {
 
   
   try {
-    std::cout << "init" << std::endl;
+    QRCON_DEBUG_MESSAGE("Open connection.");
     
     const char *password = (password_.text().length()) 
         ? password_.text().toAscii().constData()
         : "";
     
-    QRCON_DEBUG_MESSAGE("initialising");
+    /// \todo this should only be declared once actually, but what
+    ///       if it kicks you off?  Is there some timout?  Are you
+    ///       authed forever-- what!?!  I think I will need a
+    ///       reconnect() method.  Implies we should store the 
+    ///       data from those fields tho.
     rcon::connection conn(rcon::host(host_.text().toAscii().constData(), port_.text().toAscii().constData()), 
                           password);
   
-    std::cout << "done" << std::endl;
-    
     emit connected();
     output_.append(QString("<b>&gt; ") + command_.text() + "</b>");
     
