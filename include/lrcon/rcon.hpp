@@ -193,96 +193,96 @@ namespace rcon {
         /// \todo Timeouts are too hard to configure here.
         
         // Two ints, two strings.
-        const size_t max_packet_size = sizeof(int32_t) * 2 + command_base::max_string_length * 2;
+        const size_t max_packet_size = sizeof(int32_t) * 3 + command_base::max_string_length * 2;
         // Two ints, two nulls.
-        const size_t min_packet_size = sizeof(int32_t) * 2 + 1 + 1;
+        const size_t min_packet_size = sizeof(int32_t) * 3 + 1 + 1;
         
         /*!
-        \par Regarding Multiple Packets
-        
         \todo I *need* to test this.  Aparently a 32 player server will reutrn
               multipacket messages for status.  Bot server is no good; the pakcet
               is way under the limit (1133/8192).
-        \todo Be sure that my method of determining the read_finished is accurate.
-              - if it is not, then I should have an option to ignore split packets
-                because it slows everything down so much.
-        \todo Unit test both things.
-        
         */
 
-        /// \todo Convert all this to read_to_buffer(dest, size = max_packet_size).
-        ///       and then parse the buffer.  This should make this func much easier
-        ///       on the eye.
+        using common::read_to_buffer;
+        using common::endian_memcpy;
         
-        int32_t size;
-        if (common::read_type(socket, size) == common::read_type_error) {
-          common::errno_throw<recv_error>("recv() failed for size");
+        char buffer[max_packet_size];
+        std::size_t bytes = read_to_buffer(socket, &buffer, max_packet_size);
+        buffer[max_packet_size - 1] = '\0';
+        if (bytes < min_packet_size) {
+          throw proto_error("too little data was sent");
+        }
+        else if (bytes > max_packet_size) {
+          std::cerr << "warning: too much data was sent." << std::endl;
         }
         
-        if ((size < min_packet_size) || (size > max_packet_size)) {
-          throw recv_error("invalid data size.");
+        std::size_t idx = 0;
+        
+        std::size_t data_size = 0;
+        endian_memcpy(data_size, &buffer[idx]);
+        idx += sizeof(data_size);
+        endian_memcpy(recvd_request_id_, &buffer[idx]);
+        idx += sizeof(recvd_request_id_);
+        endian_memcpy(command_id_, &buffer[idx]);
+        idx += sizeof(command_id_);
+        
+        RCON_DEBUG_MESSAGE("* Properties of read: ");
+        RCON_DEBUG_MESSAGE("* Actual Bytes:  " << bytes << "/" << max_packet_size);
+        RCON_DEBUG_MESSAGE("* Reported size: " << data_size << "/" << max_packet_size - sizeof(int32_t));
+        RCON_DEBUG_MESSAGE("* Request id:    " << recvd_request_id_);
+        RCON_DEBUG_MESSAGE("* Command id:    " << command_id_);
+        
+        if (command_id_ != command_base::auth_request && 
+            command_id_ != command_base::auth_response &&
+            command_id_ != command_base::exec_request && 
+            command_id_ != command_base::exec_response) {
+          throw response_error("received an invalid command id.");
+        }
+          
+        // size DOESN'T include the size of data_size itself!
+        if (data_size > (max_packet_size - sizeof(int32_t)) || 
+            data_size < (min_packet_size - sizeof(int32_t))) {
+          throw response_error("received an invalid packet size");
         }
         
-        if (common::read_type(socket, recvd_request_id_) == common::read_type_error) {
-          common::errno_throw<recv_error>("recv() failed for request_id");
-        }
-          
-        {
-          // ensure t is actually a valid member of the enum before assigning it
-          int32_t t;
-          if (common::read_type(socket, t) == common::read_type_error) {
-            common::errno_throw<recv_error>("recv() failed for command_id");
-          }
-          
-          RCON_DEBUG_MESSAGE("Properties of read: ");
-          RCON_DEBUG_MESSAGE("  Initial size: " << size);
-          RCON_DEBUG_MESSAGE("  Request id: " << recvd_request_id_);
-          RCON_DEBUG_MESSAGE("  Command id: " << t);
-          
-          if (t == command_base::auth_request || t == command_base::auth_response ||
-              t == command_base::exec_request || t == command_base::exec_response) {
-            command_id_ = t;
-          }
-          else {
-            throw response_error("received an invalid command id.");
-          }
+        // Includes the nulls.
+        std::size_t strings_part_length = bytes - min_packet_size;
+        std::size_t old_size = payload_.length();
+        payload_.resize(payload_.length() + strings_part_length);
+        
+        // First string
+        std::size_t buffered_string_length = std::strlen(&buffer[idx]);
+        std::memcpy(&payload_[old_size], &buffer[idx], buffered_string_length);
+        
+        RCON_DEBUG_MESSAGE("* First string (" << std::strlen(&payload_[old_size]) << "):\n'" << &payload_[old_size] << "'");
+        
+        assert(buffer[idx + buffered_string_length] == '\0'); 
+        
+        // Seccond string
+        idx += buffered_string_length + 1;
+        // Could happen if for some reason there was only one null at the end of 
+        // the packet (I put one there manually already)
+        if (idx >= max_packet_size-1) {
+          std::cerr << "warning: the data was not null-terminated." << std::endl;
         }
         
-        const int max_payload_size = max_string_length * 2;
-        size_t total_payload_size;
-        {
-          /// \todo use common::from_buffer here
-          
-          // Read the entire rest of the packet
-          size -= 2 * sizeof(int32_t);
-          
-          assert(size < max_payload_size);
-          assert(size > 0);
-          char buf[max_payload_size];
-          size_t idx = 0;
-          RCON_DEBUG_MESSAGE("  Reading " << size << " from the socket for payload.");
-          while (size > 0) {
-            int bytes = -1;
-            if ((bytes = recv(socket, &buf[idx], size, 0)) == -1) {
-              common::errno_throw<recv_error>("recv() failed for stringdata");
-            }
-            
-            size -= bytes; 
-            idx += bytes;
-          }
-          
-          // Concatinate the two strings value to the payload.
-          buf[max_payload_size-2] = buf[max_payload_size-1] = '\0';
-          payload_.append(buf);
-          if (payload_.length() != idx-2) payload_.append(&buf[payload_.length()]);
-          
-          total_payload_size = idx;
-          
-          RCON_DEBUG_MESSAGE("  Payload: '" << payload_ << "' (used " << total_payload_size << "/" << max_payload_size << " bytes)");
-        }
+        old_size += buffered_string_length;
+        buffered_string_length = std::strlen(&buffer[idx]);
+        std::memcpy(&payload_[old_size], &buffer[idx], buffered_string_length);
         
-        /// \todo This needs to be tested.
-        return (total_payload_size == max_payload_size) ? read_again : read_finished ;
+        payload_[old_size + buffered_string_length + 1] = '\0';
+        
+        RCON_DEBUG_MESSAGE("* Second string (" << std::strlen(&payload_[old_size]) << "):\n'" << &payload_[old_size] << "'");
+        
+        // +1 for the null at the end of str2
+        assert(bytes == idx + buffered_string_length + 1);
+
+        /// \todo This needs to be tested.  If this is not a ccorrect way of 
+        ///       determining the end of data, then it is not, then I should 
+        ///       have an option to ignore split packets because it slows 
+        ///       everything down so much.
+
+        return (bytes == max_packet_size) ? read_again : read_finished ;
       }
       
       //! \brief Send *this as an RCON packet.

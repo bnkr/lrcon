@@ -153,11 +153,13 @@ namespace common {
     ~proto_error() throw() {}
   };
   
-  
   //! Throw given exception using errno to get a message
   template <typename Exception>
   void errno_throw(const char *message) {
-    throw Exception(std::string(message) + ": " + strerror(errno));
+    std::string m(message);
+    m += ": ";
+    m += strerror(errno);
+    throw Exception(m);
   }
   
 #ifdef LRCON_WINDOWS
@@ -227,6 +229,12 @@ namespace common {
       host(const char *host, const char *port, int attr = host::tcp) {
         COMMON_DEBUG_MESSAGE("Host is: " << host << ":" << port << " attr:" << attr);
         
+        if (host == NULL) throw std::invalid_argument("host not be empty");
+        
+        if (port == NULL) throw std::invalid_argument("port must be a numeric string");
+        
+        assert(! (attr & tcp & udp));
+        
         struct addrinfo hints;
 #ifdef LRCON_WINDOWS
         // Necessary or gai crashes with unrecoverable error during database lookup.  
@@ -235,7 +243,7 @@ namespace common {
 #endif
         
         hints.ai_family = AF_INET; /*AF_UNSPEC*/;     /* values: IPv6 AF_INET or AF_INET6 */
-        assert(! (attr & tcp & udp));
+        
         if (attr & udp) {
           hints.ai_socktype = SOCK_DGRAM;
         }
@@ -398,8 +406,7 @@ namespace common {
         }
         else if (flags & O_NONBLOCK) {
           if (fcntl(socket_, F_SETFL, flags & ~O_NONBLOCK) == -1) { 
-            std::cerr << "warning: couldn't set non-blocking flags on the socket.  "
-                         "If the host drops packets, the connection will block forever." << std::endl;
+            errno_throw<connection_error>("could not reset the socket to blocking mode");
           }
         }
         
@@ -489,6 +496,40 @@ namespace common {
   const int read_type_error = -1;
   const int send_type_error = -1;
   
+  
+  /// \todo These functions are a mess!  Stick with:
+  ///       - read_to_buffer (should be in connection)
+  ///       - send_from_buffer (should be in connection)
+  ///       - var_from_buffer = read_type, but from a buffer
+  ///       - var_to_buffer = send_type but to a buffer
+  /// 
+  /// This is all used by query tho.
+  /// 
+  template <typename Exception>
+  int read_to_buffer(int socket_fd, void *buff, size_t buffsz, const char *errormsg = "recv() failed") {
+    int read = 0;
+#ifdef LRCON_WINDOWS
+    if ((read = recv(socket_fd, (char *) buff, buffsz, 0)) == -1) {
+#else 
+    if ((read = recv(socket_fd, buff, buffsz, 0)) == -1) {
+#endif
+      common::errno_throw<Exception>(errormsg);
+    }
+    return read;
+  }
+  
+  inline int read_to_buffer(int socket_fd, void *buff, size_t buffsz, const char *errormsg = "recv() failed") {
+    return read_to_buffer<recv_error>(socket_fd, buff, buffsz, errormsg);
+  }
+  
+  
+  
+  
+  
+  
+  
+  
+  
   /*! 
   \brief Reads an integral type, ensureing endianness.
   */
@@ -508,6 +549,7 @@ namespace common {
     idx += sizeof(T);
     return v;
   }
+ 
   
   //! Adds to a string (also increments idx by reference).  The compiler definitely should 
   //! optimise the by-value copy out when initialising a variable.
@@ -529,23 +571,6 @@ namespace common {
     v = native_to_server_endian(v);
     int bytes = send(socket, (char *) &v, sizeof(T), 0);
     return bytes;
-  }
-  
-  template <typename Exception>
-  int read_to_buffer(int socket_fd, void *buff, size_t buffsz, const char *errormsg = "recv() failed") {
-    int read = 0;
-#ifdef LRCON_WINDOWS
-    if ((read = recv(socket_fd, (char *) buff, buffsz, 0)) == -1) {
-#else 
-    if ((read = recv(socket_fd, buff, buffsz, 0)) == -1) {
-#endif
-      common::errno_throw<Exception>(errormsg);
-    }
-    return read;
-  }
-  
-  inline int read_to_buffer(int socket_fd, void *buff, size_t buffsz, const char *errormsg = "recv() failed") {
-    return read_to_buffer<recv_error>(socket_fd, buff, buffsz, errormsg);
   }
 }
 
