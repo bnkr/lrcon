@@ -182,7 +182,6 @@ namespace rcon {
       read_result read(int socket, bool error_on_timeout = true) {
         RCON_DEBUG_MESSAGE("Reading a packet.");
         
-        /// \todo Needed before every read?
         int timeleft = common::wait_for_select(socket, common::wait_readable);
         if (timeleft == common::wait_for_select_timeout) {
           RCON_DEBUG_MESSAGE("Timeout.");
@@ -219,6 +218,7 @@ namespace rcon {
         
         std::size_t idx = 0;
         
+        /// \todo Use var_from_buffer here (when it's written)
         std::size_t data_size = 0;
         endian_memcpy(data_size, &buffer[idx]);
         idx += sizeof(data_size);
@@ -294,6 +294,8 @@ namespace rcon {
         // Size is NOT including the size we are currently summing up report.
         int32_t size = sizeof(int32_t) * 2 + payload_.length() + sizeof(char) + sizeof(char);
         
+        /// \todo Use send_to_buffer and var_to_buffer
+        
         RCON_DEBUG_MESSAGE("Data sending properties: ");
         RCON_DEBUG_MESSAGE("  Packet: " << size);
         if (common::send_type(socket, size) == common::send_type_error) {
@@ -315,13 +317,11 @@ namespace rcon {
           common::errno_throw<send_error>("error sending payload");
         }
 
-        if (common::send_type(socket, '\0') ==  common::send_type_error) {
+        if (common::send_type<char>(socket, '\0') ==  common::send_type_error) {
           common::errno_throw<send_error>("error sending terminating null");
         }
       }
-  };
-// #endif 
-  
+  };  
 
   /*! 
   \brief Command for authorisation.  

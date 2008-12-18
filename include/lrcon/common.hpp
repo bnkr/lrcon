@@ -515,34 +515,54 @@ namespace common {
   /// 
   /// This is all used by query tho.
   /// 
+  
+  //! Read a buffer from the socket
   template <typename Exception>
   int read_to_buffer(int socket_fd, void *buff, size_t buffsz, const char *errormsg = "recv() failed") {
+    /// \todo make this a member of connection_base
     int read = 0;
-#ifdef LRCON_WINDOWS
+    // windows needs char*
     if ((read = recv(socket_fd, (char *) buff, buffsz, 0)) == -1) {
-#else 
-    if ((read = recv(socket_fd, buff, buffsz, 0)) == -1) {
-#endif
       common::errno_throw<Exception>(errormsg);
     }
     return read;
   }
   
   inline int read_to_buffer(int socket_fd, void *buff, size_t buffsz, const char *errormsg = "recv() failed") {
+    /// \todo make this a member of connection_base
     return read_to_buffer<recv_error>(socket_fd, buff, buffsz, errormsg);
   }
   
-  inline int send_from_buffer(int socket_fd, const void *buff, std::size_t buffsz, const char *errormsg = "send() failed") {
-    //int sent = send(socket_fd, (char *) &v, buffsz, 0);
-    
-    throw std::logic_error("Not implemented yet.");
+  //! Send a buffer to the socket
+  template<class Exception>
+  int send_from_buffer(int socket_fd, const void *buff, std::size_t buffsz, const char *errormsg = "send() failed") {
+    /// \todo make this a member of connection_base
+    int sent;
+    if ((sent = send(socket_fd, (char *) &buff, buffsz, 0)) == -1) {
+      common::errno_throw<Exception>(errormsg);
+    }
+    return sent;
   }
   
+  inline int send_from_buffer(int socket_fd, const void *buff, std::size_t buffsz, const char *errormsg = "send() failed") {
+    /// \todo make this a member of connection_base
+    return send_from_buffer<send_error>(socket_fd, buff, buffsz, errormsg);
+  }
   
+  //! Endian-safe extraction of a variable from a buffer which was from the rcon network
+  template<typename T>
+  T var_from_network_buffer(const void *buffer) {
+    return server_to_native_endian(*static_cast<const T *>(buffer));
+  }
   
+  //! Endian-safe insertion of a variable into a buffer which was from the rcon network
+  template<typename T>
+  void var_to_network_buffer(void *dest, const T &src) {
+    T v = native_to_server_endian(src);
+    std::memcpy(dest, v, sizeof(T));
+  }
   
-  
-  
+  ///// old stuff below here
   
   /*! 
   \brief Reads an integral type, ensureing endianness.
