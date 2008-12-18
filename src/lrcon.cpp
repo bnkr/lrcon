@@ -39,7 +39,7 @@ void print_usage(const char *pname) {
       "  -P  port (default: 27015)\n"
       "  -s  server (default: localhost)\n"
       "  -h  this message and exit.\n\n"
-      "lrcon Copyright (C) 2008 James Weber\n"
+      "lrcon Copyright (C) 2008 James Webber\n"
       "This program comes with ABSOLUTELY NO WARRANTY.  This is free software, and you\n"
       "are welcome to distribute it under the terms of the GPLv3.\n"
       << std::flush;

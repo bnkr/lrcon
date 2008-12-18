@@ -73,23 +73,6 @@ include(${QT_USE_FILE})
 #       the debug flags)
 #add_definitions("-DRCON_DEBUG_MESSAGES -DQRCON_DEBUG_MESSAGES")
 
-# # TODO: ok this is a real pain.  It seems to be almost impossible to get qmake to report the 
-# #   correct values.  It looks like the only way is to define all this crap in one go using ccmake
-# #   and cmake.  
-# #   - The stupid thing refuses to find qmake, despite it also finding moc,uic etc.
-# #   - Won't find *any* of the libs or headers 
-# #     - that's expected since I don't have the win headers here, but why is there
-# #       no way to add the location of windows in?!  
-# #   SO: can I use the toolchain file to define all this bullshit statically, or is it going to
-# #   make me use a script and/or ccmake every time?
-# if(QT_USE_CMAKE_FINDER)
-#   find_package(Qt4)
-#   include(${QT_USE_FILE})
-# else()
-#   include("build-aux/FindQt4.cmake")
-#   include(${QT_USE_FILE})
-# endif()
-
 set(BIN_QRCON "qrcon")
 set(BIN_QRCON_SRCS src/qrcon.cpp src/ServerManager.cpp)
 set(BIN_QRCON_MOC_SRCS src/ServerManager.hpp)
@@ -104,21 +87,24 @@ target_link_libraries(${BIN_QRCON} ${QT_LIBRARIES} ${LRCON_LIBRARIES})
 ## Building Doxygen ##
 ######################
 
-doxygen_add_directives(DOXYGEN_FLAGS "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/;INPUT = ${CMAKE_SOURCE_DIR}/include/")
-doxygen_add_directives(DOXYGEN_FLAGS "PROJECT_NAME = ${PROJECT_NAME}")
-doxygen_add_directives(DOXYGEN_FLAGS "PROJECT_NUMBER = ${PROJECT_VERSION}")
+# Truly horrible list append code here :)
+
+set(DOXYGEN_FLAGS "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/")
+set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;INPUT = ${CMAKE_SOURCE_DIR}/include/")
+set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;PROJECT_NAME = ${PROJECT_NAME}")
+set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;PROJECT_NUMBER = ${PROJECT_VERSION}")
 # TODO: for a maintainer build, doxygen should do into the source tree since
 #       I need to distribute it as part of the tarball.  Perhaps I can solve
 #       some of this with CPack?  Maybe CPack can manually add in built 
 #       doxygen to the source tarball... or just follow a symlink?
-doxygen_add_directives(DOXYGEN_FLAGS "OUTPUT_DIRECTORY = ${CMAKE_BINARY_DIR}/doxygen/")
+set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;OUTPUT_DIRECTORY = ${CMAKE_BINARY_DIR}/doxygen/")
 
 if (WANT_DOXYGEN_PDF)
-  doxygen_add_directives(DOXYGEN_FLAGS "GENERATE_LATEX = yes")
+  set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;GENERATE_LATEX = yes")
 endif()
 
 if (WANT_DOXYGEN_HTML) 
-  doxygen_add_directives(DOXYGEN_FLAGS "GENERATE_HTML = yes")
+  set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;GENERATE_HTML = yes")
 endif()
 
 add_doxygen(
@@ -190,6 +176,7 @@ install(TARGETS ${BIN_QRCON} RUNTIME DESTINATION bin)
 # the release, not the next release!
 
 # TODO: cpack should force doxygen to build: add_dependancies to package_source and package?
+# TODO: we should only allow the release doxyfile, not a user-defined one
 # TODO: cpack should force moc to run (but that first requires that the mocfiles are 
 #       build into the source which doesn't happen yet)
 
@@ -224,6 +211,7 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSIO
 if(WIN32 AND NOT UNIX)
   # There is a bug in NSI that does not handle full unix paths properly. Make
   # sure there is at least one set of four (4) backlasshes.
+  # TODO: all of this, but it requires cross-compile anyway
   set(CPACK_PACKAGE_ICON "${CMake_SOURCE_DIR}/Utilities/Release\\\\InstallIcon.bmp")
   set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\MyExecutable.exe")
   set(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} My Famous Project")
