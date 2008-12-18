@@ -19,7 +19,7 @@
 
 //! Windows implementation of this doesn't work properly.
 #ifdef LRCON_WINDOWS
-#  define isatty(x__)
+#  define isatty(x__) (true)
 #else
 #  include <unistd.h> // isatty
 #endif
