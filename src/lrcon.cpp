@@ -16,7 +16,13 @@
 #include <lrcon/rcon.hpp>
 
 #include <cstdlib> // exit_failure etc.
-#include <unistd.h> // isatty
+
+//! Windows implementation of this doesn't work properly.
+#ifdef LRCON_WINDOWS
+#  define isatty(x__)
+#else
+#  include <unistd.h> // isatty
+#endif
 
 //! Run one command and handle errors. >0 on error.
 int single_command(rcon::connection &conn, const std::string &command);
