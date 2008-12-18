@@ -183,19 +183,60 @@ install(TARGETS ${BIN_QRCON} RUNTIME DESTINATION bin)
 ## CPack Stuff ##
 #################
 
-# TODO: doxygen should be in the cpack, but probably optionally... how?!
-# TODO: cpack should force doxygen to build
+# Note: Source package effectively snapshots the source directory, including copying
+# symlinks.  This is how doxygen is built.  Therefore, to make a full release
+# the current doxygen should be copied into a release dir instead of just symlinking
+# to the developer built docs.  This way uploaded docs point to the actual docs for
+# the release, not the next release!
+
+# TODO: cpack should force doxygen to build: add_dependancies to package_source and package?
 # TODO: cpack should force moc to run (but that first requires that the mocfiles are 
 #       build into the source which doesn't happen yet)
-# TODO: make it follow symlinks
-# TODO: it would solve a lot of problems if I could build the doxygen normally (into
-#       the binary dir) and then manually put it in the source tarball.  Symlinks can
-#       sort-of do it, but it's pretty messy, especially since the packge_source is so
-#       basic.  Also it causes problem for bunkerprivate.com... 
-#       
-#       hm actually it would be better if I could move the docs into releases/ instead  
-#       of srcdir.  This way the dev docs aren't stored on the website.  
-#       - This should be done by a release script
-#       - CPack should (if possible) take the docs which are in the binary dir. I'm
-#         sure this is at least hackable.
+
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "My funky project")
+set(CPACK_PACKAGE_VENDOR "Me, myself, and I")
+set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/build-aux/install-readme.txt")
+
+string(REGEX REPLACE "^([0-9]+).*" "\\1" PROJECT_MAJOR ${PROJECT_VERSION})
+string(REGEX REPLACE "^[^.]+\\.([0-9]+).*" "\\1" PROJECT_MINOR ${PROJECT_VERSION})
+string(REGEX REPLACE "^[^.]+\\.[^.]+\\.([0-9]+).*" "\\1" PROJECT_PATCH ${PROJECT_VERSION})
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_PATCH})
+
+set(CPACK_SOURCE_TGZ "ON")
+set(CPACK_SOURCE_TBZ2 "OFF")
+set(CPACK_SOURCE_TZ "OFF")
+
+set(CPACK_BINARY_STGZ "OFF")
+set(CPACK_BINARY_TBZ2 "OFF")
+set(CPACK_BINARY_TGZ "OFF")
+set(CPACK_BINARY_TZ "OFF")
+
+# Yes, you really need all that escape crap.
+# TODO: make a user-defined var for extra stuff to ignore
+set(CPACK_SOURCE_IGNORE_FILES "/\\\\..*/;~$;/releases/;/cmake-build-dir/;/source-server/;/_notes/;doc/html/.*\\\\.md5$;/_notes/;doc/html/.*\\\\.map$;Makefile")
+set(CPACK_PACKAGE_EXECUTABLES "MyExecutable" "My Executable")
+
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")
+if(WIN32 AND NOT UNIX)
+  # There is a bug in NSI that does not handle full unix paths properly. Make
+  # sure there is at least one set of four (4) backlasshes.
+  set(CPACK_PACKAGE_ICON "${CMake_SOURCE_DIR}/Utilities/Release\\\\InstallIcon.bmp")
+  set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\MyExecutable.exe")
+  set(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} My Famous Project")
+  set(CPACK_NSIS_HELP_LINK "http:\\\\\\\\www.my-project-home-page.org")
+  set(CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\www.my-personal-home-page.com")
+  set(CPACK_NSIS_CONTACT "me@my-personal-home-page.com")
+  set(CPACK_NSIS_MODIFY_PATH ON)
+else()
+  set(CPACK_STRIP_FILES "bin/MyExecutable")
+  
+  set(CPACK_SOURCE_STRIP_FILES "")
+endif()
+
+
+include(CPack)
 
