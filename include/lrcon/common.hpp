@@ -52,7 +52,6 @@
 #include <stdexcept>
 #include <iostream>
 
-
 #if defined(COMMON_DEBUG_MESSAGES) || defined(RCON_DEBUG_MESSAGES ) \
     || defined(QUERY_DEBUG_MESSAGES) 
 #  include <iostream>
@@ -291,6 +290,7 @@ namespace common {
       }
       
       ~host() {
+        // also frees the sockets, of course
         freeaddrinfo(ad_info);
       }
       

@@ -13,7 +13,7 @@ function(add_doxygen target_name template_file directives_list)
   find_program(CAT_EXE cat type REQUIRED)
   
   if(NOT CAT_EXE) 
-    message("Guessing the name of /usr/bin/cat")
+    message("Guessing the name of cat/type as `cat'.")
     set(CAT_EXE cat)
   endif()
   
@@ -46,12 +46,16 @@ function(add_doxygen target_name template_file directives_list)
     VERBATIM 
   )
     
+#TODO: use ADDITIONAL\_MAKE\_CLEAN\_FILES here
+    
   # TODO: obv. this is broken - need to know the outputdir first
   #   set(latex_directory ${CMAKE_BINARY_DIR}/doc/latex/) - grep from the file and/or overrides
   
   # TODO: we must test the file and the overrides for a value: overrides first,
   #   then if not forced, look in the file.
   #   
+  # TODO: other stuff will work like this; eg, if you want a .dvi
+  # 
   #if(pdf)
   #   find_program(MAKE_EXE)
   #   find_package(LATEX)

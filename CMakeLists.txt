@@ -87,7 +87,7 @@ target_link_libraries(${BIN_QRCON} ${QT_LIBRARIES} ${LRCON_LIBRARIES})
 ## Building Doxygen ##
 ######################
 
-# Truly horrible list append code here :)
+# TODO: use list(APPEND output inputs...)
 
 set(DOXYGEN_FLAGS "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/")
 set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;INPUT = ${CMAKE_SOURCE_DIR}/include/")

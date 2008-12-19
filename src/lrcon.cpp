@@ -123,10 +123,13 @@ int main(const int argc, const char *const argv[]) {
         read_from_stdin = true;
       }
       else if (strcmp(argv[i], "--") == 0) {
-        // end of arguments
         ++i;
         break;
       }
+      else if (argv[i][0] != '-') {
+        break;
+      }
+    
       ++i;
     }
     
