@@ -116,15 +116,18 @@ add_doxygen(
   "${DOXYGEN_FLAGS}"
 )
 
-if (WANT_DOXYGEN_REBUILD)
-  # add doxygen to all (add_dependancies usage isn't clear because `all' might not be
-  # the name of the ALL target)
-  add_custom_target(ALL DEPENDS ${DOXYGEN_TARGET})
-elseif(WANT_DOXYGEN_PDF OR WANT_DOXYGEN_HTML)
-  if (NOT EXISTS "${DOXYGEN_IN_SOURCEDIR}")
-    message(FATAL_ERROR "Documentation doesn't exist yet; set WANT_DOXYGEN_REBUILD or all the DOXYGEN targets to NO")
-  endif()
-endif()
+# TODO: i'm  pretty sure this is redundant now I have 
+#   the file outputs done, but I still can't pass a value
+#   back up the stack.
+# if (WANT_DOXYGEN_REBUILD)
+#   # add doxygen to all (add_dependancies usage isn't clear because `all' might not be
+#   # the name of the ALL target)
+#   add_custom_target(ALL DEPENDS ${DOXYGEN_TARGET})
+# elseif(WANT_DOXYGEN_PDF OR WANT_DOXYGEN_HTML)
+#   if (NOT EXISTS "${DOXYGEN_IN_SOURCEDIR}")
+#     message(FATAL_ERROR "Documentation isn't available to install; set WANT_DOXYGEN_REBUILD or all the DOXYGEN targets to NO")
+#   endif()
+# endif()
 
 
 
@@ -180,7 +183,6 @@ install(TARGETS ${BIN_QRCON} DESTINATION ${BINDIR})
 # the release, not the next release!
 
 # TODO: cpack should force doxygen to build: add_dependancies to package_source and package?
-# TODO: we should only allow the release doxyfile, not a user-defined one
 # TODO: cpack should force moc to run (but that first requires that the mocfiles are 
 #       build into the source which doesn't happen yet)
 
@@ -208,7 +210,7 @@ set(CPACK_BINARY_TZ "OFF")
 
 # Yes, you really need all that escape crap.
 # TODO: make a user-defined var for extra stuff to ignore
-set(CPACK_SOURCE_IGNORE_FILES "/\\\\..*/;~$;/releases/;/cmake-build-dir/;/source-server/;/_notes/;doc/html/.*\\\\.md5$;/_notes/;doc/html/.*\\\\.map$;Makefile")
+set(CPACK_SOURCE_IGNORE_FILES "/\\\\..*/;~$;/releases/;/${CMAKE_BINARY_DIR}/;/source-server/;/_notes/;doc/html/.*\\\\.md5$;/_notes/;doc/html/.*\\\\.map$;Makefile")
 set(CPACK_PACKAGE_EXECUTABLES "MyExecutable" "My Executable")
 
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")

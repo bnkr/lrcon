@@ -117,7 +117,7 @@ function(add_doxygen installables_var target_name template_file directives_list)
     set(CAT_EXE cat)
   endif()
   
-  set(doxyfile_name "${CMAKE_BINARY_DIR}/${target_name}-doxyfile-generated")
+  set(doxygen_conf_file "${CMAKE_BINARY_DIR}/${target_name}-doxyfile-generated")
   set(additions_file "${CMAKE_BINARY_DIR}/${target_name}-doxyfile-forced")
   
   message("Doxygen forced vars are in ${additions_file}.  Redefining them in the base Doxyfile will not work without re-configuring!")
@@ -283,6 +283,8 @@ function(add_doxygen installables_var target_name template_file directives_list)
     PROPERTY "ADDITIONAL_MAKE_CLEAN_FILES" 
     ${additions_file} ${doxygen_conf_file} ${absolute_doxygen_path}
   )
+  
+  message(${doxygen_conf_file})
   
   add_custom_command(
     OUTPUT ${doxygen_conf_file}
