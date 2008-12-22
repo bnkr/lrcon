@@ -33,10 +33,6 @@ endif()
 option(WANT_DOCS "Install documentation - when off, all other docs options are off." YES)
 option(WANT_DOXYGEN_HTML "Install HTML made by doxygen" YES)
 option(WANT_DOXYGEN_PDF "Install PDF from doxygen (needs pdfLaTeX)" NO)
-option(WANT_DOXYGEN_REBUILD "Rebuild doxygen stuff instead of using what's in the tarball (needs doxygen)" NO)
-
-option(WANT_DOXYGEN_PDF_GRAPHICS "Use the graphical stuff in pdfs (needs dot, LaTeX graphics converters)" YES)
-option(WANT_DOXYGEN_HTML_GRAPHICS "Use the graphical stuff in htmls (needs dot)" YES)
 
 set(DOXYGEN_DOXYFILE_TEMPLATE "${CMAKE_SOURCE_DIR}/Doxyfile.default" CACHE STRING 
     "Base doxyfile.  Mostly useful for developers.  Certain vars will be overwritten (in/output paths mostly).")
@@ -89,68 +85,75 @@ target_link_libraries(${BIN_QRCON} ${QT_LIBRARIES} ${LRCON_LIBRARIES})
 
 # TODO: use list(APPEND output inputs...)
 
-set(DOXYGEN_FLAGS "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/")
-set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;INPUT = ${CMAKE_SOURCE_DIR}/include/")
-set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;PROJECT_NAME = ${PROJECT_NAME}")
-set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;PROJECT_NUMBER = ${PROJECT_VERSION}")
+set(DOXYGEN_IN_SOURCEDIR "${CMAKE_SOURCE_DIR}/doc/")
+
+list(APPEND DOXYGEN_FLAGS "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/")
+list(APPEND DOXYGEN_FLAGS "INPUT = ${CMAKE_SOURCE_DIR}/include/")
+list(APPEND DOXYGEN_FLAGS "PROJECT_NAME = ${PROJECT_NAME}")
+list(APPEND DOXYGEN_FLAGS "PROJECT_NUMBER = ${PROJECT_VERSION}")
 # TODO: for a maintainer build, doxygen should do into the source tree since
 #       I need to distribute it as part of the tarball.  Perhaps I can solve
 #       some of this with CPack?  Maybe CPack can manually add in built 
 #       doxygen to the source tarball... or just follow a symlink?
-set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;OUTPUT_DIRECTORY = ${CMAKE_BINARY_DIR}/doxygen/")
+list(APPEND DOXYGEN_FLAGS "OUTPUT_DIRECTORY = ${CMAKE_BINARY_DIR}/doxygen/")
 
 if (WANT_DOXYGEN_PDF)
-  set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;GENERATE_LATEX = yes")
+  list(APPEND DOXYGEN_FLAGS "GENERATE_LATEX = yes")
 endif()
 
 if (WANT_DOXYGEN_HTML) 
-  set(DOXYGEN_FLAGS "${DOXYGEN_FLAGS}\;GENERATE_HTML = yes")
+  list(APPEND DOXYGEN_FLAGS "GENERATE_HTML = yes")
 endif()
 
+# TODO: horribly broken.  How do I return a variable by reference without 
+#   using a macro?
+set(DOXYGEN_TARGET "doxygen")
+
 add_doxygen(
-  doxygen
+  DOXYGEN_INSTALLABLES
+  ${DOXYGEN_TARGET}
   ${DOXYGEN_DOXYFILE_TEMPLATE}
-  ${DOXYGEN_FLAGS}
+  "${DOXYGEN_FLAGS}"
 )
 
 if (WANT_DOXYGEN_REBUILD)
-  # TODO: add doxygen to the all target
+  # add doxygen to all (add_dependancies usage isn't clear because `all' might not be
+  # the name of the ALL target)
+  add_custom_target(ALL DEPENDS ${DOXYGEN_TARGET})
 elseif(WANT_DOXYGEN_PDF OR WANT_DOXYGEN_HTML)
-  if (NOT EXISTS "${CMAKE_SOURCE_DIR}/doc/")
-    message(FATAL_ERROR "Documentation doesn't exist yet; set WANT_DOXYGEN_REBUILD or unset WANT_DOCS")
+  if (NOT EXISTS "${DOXYGEN_IN_SOURCEDIR}")
+    message(FATAL_ERROR "Documentation doesn't exist yet; set WANT_DOXYGEN_REBUILD or all the DOXYGEN targets to NO")
   endif()
 endif()
+
+
 
 ##################
 ## Installation ##
 ##################
 
-# Documentation
-# TODO: this goes to the wrong place: usr/local/doc/lrcon; should be /usr/local/share/doc/lrcon/
+# autotools style
+set(INCLUDEDIR "include/")
+set(BINDIR "bin")
+set(DATADIR "share/")
+set(DOCDIR "${DATADIR}/doc/lrcon/")
+set(HTMLDIR "${DATADIR}/doc/lrcon/")
+set(PDFDIR "${DATADIR}/doc/lrcon/")
+set(DVIDIR "${DATADIR}/doc/lrcon/")
+set(PSDIR "${DATADIR}/doc/lrcon/")
 
-install(
-  FILES README COPYING 
-  DESTINATION doc/lrcon/
-)
-  
-# TODO: The make doxygen target needs teh .md5 files (for rebuilds), but we want to 
-#       get rid of them for installing.  How?  Custom command?
-  
-if (WANT_DOXYGEN_HTML) 
-  if (WANT_DOXYGEN_REBUILD) 
-    # install from binarydir
-  else()
-    # install from source dir
-  endif()
-endif()
 
-if (WANT_DOXYGEN_PDF)
-  if (WANT_DOXYGEN_REBUILD) 
-    # install from binarydir
-  else()
-    # install from source dir
-  endif()
-endif()
+
+
+if (WANT_DOCS) 
+  # Documentation
+  install(
+    FILES README COPYING 
+    DESTINATION ${DOCDIR}
+  )
+  
+  doxygen_install_targets("${DOXYGEN_TARGET}" "${DOXYGEN_INSTALLABLES}" 1)
+endif(WANT_DOCS)
 
 # Header files
 install(FILES include/lrcon.hpp DESTINATION include/)
@@ -158,12 +161,13 @@ install(
   FILES include/lrcon/query.hpp
         include/lrcon/rcon.hpp
         include/lrcon/common.hpp
-  DESTINATION include/lrcon/
+  PUBLIC_HEADER
+  DESTINATION ${INCLUDEDIR}
 )
 
 # Binaries
-install(TARGETS ${BIN_LRCON} RUNTIME DESTINATION bin)
-install(TARGETS ${BIN_QRCON} RUNTIME DESTINATION bin)
+install(TARGETS ${BIN_LRCON} DESTINATION ${BINDIR})
+install(TARGETS ${BIN_QRCON} DESTINATION ${BINDIR})
 
 #################
 ## CPack Stuff ##
