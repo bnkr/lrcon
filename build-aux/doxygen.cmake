@@ -123,7 +123,7 @@ function(add_doxygen installables_var target_name template_file directives_list)
   message("Doxygen forced vars are in ${additions_file}.  Redefining them in the base Doxyfile will not work without re-configuring!")
 
   ## Detect paths and vars defined by the template file and the overrides ##
-  set(conf_output_dir "")
+  set(conf_output_dir "doxygen")
   set(conf_generate_latex YES)
   set(conf_generate_html YES)
   set(conf_generate_man NO)
@@ -275,6 +275,10 @@ function(add_doxygen installables_var target_name template_file directives_list)
     set(main_outputs "${main_outputs} ${absolute_latex_path}")
   endif()
   
+  
+  message("** LATEX: ${absolute_latex_path}")
+  message("** PDF:   ${pdf_output}")
+ 
   ## Add targets based on the paths ##
   
   # Applies to whatever the cwd is .
@@ -283,8 +287,6 @@ function(add_doxygen installables_var target_name template_file directives_list)
     PROPERTY "ADDITIONAL_MAKE_CLEAN_FILES" 
     ${additions_file} ${doxygen_conf_file} ${absolute_doxygen_path}
   )
-  
-  message(${doxygen_conf_file})
   
   add_custom_command(
     OUTPUT ${doxygen_conf_file}
@@ -298,11 +300,20 @@ function(add_doxygen installables_var target_name template_file directives_list)
   )
   
   add_custom_command(
-    OUTPUT ${main_outputs}
+    OUTPUT ${absolute_doxygen_path} 
     COMMAND ${DOXYGEN_EXECUTABLE} ${doxygen_conf_file}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS ${doxygen_conf_file}
     COMMENT "Generating main doxygen (html, .tex files ...)"
+    VERBATIM 
+  )
+  
+  # TODO: is this really needed?  Also, make the path dynamic.  Also it's wrong
+  #   anyway because the makefile might not get modified
+  add_custom_command(
+    OUTPUT "${CMAKE_BINARY_DIR}/doxygen/latex/Makefile"
+    DEPENDS ${absolute_doxygen_path} 
+    COMMENT "Phony target to generate Makefile."
     VERBATIM 
   )
   
@@ -311,68 +322,69 @@ function(add_doxygen installables_var target_name template_file directives_list)
     DEPENDS "${absolute_doxygen_path}"
     COMMENT "Generating HTML, LaTeX, man (if doxyfile changed)."
   )
-      
-  if (NOT LATEX_COMPILER AND NOT PDFLATEX_COMPILER) 
-    message(STATUS "No LaTeX found.  Doxygen LaTeX-based targets not added.")
-  else()
-    message(STATUS "Adding doxygen LaTeX targets.")
-    
-    if (NOT MAKE_EXECUTABLE)
-      message("Make exe can't be found: doxygen LaTeX is not buildable.")
+  
+  if (conf_generate_latex)
+    if (NOT LATEX_COMPILER AND NOT PDFLATEX_COMPILER) 
+      message(STATUS "No LaTeX found.  Doxygen LaTeX-based targets not added.")
     else()
-      # TODO: only the pdf command works!  Could it be an issue with USE_PDFLATEX?
-      #   I think not.  It's prolly because pdflatex directly outputs the pdf and
-      #   the others only output a dvi which can be converted either way.  Otherwise
-      #   I can use ps2pdf... I need to test exactly what is outputted when not 
-      #   pdflatex.
-      #   
-      add_custom_command(
-        OUTPUT ${dvi_output}
-        COMMAND ${MAKE_EXECUTABLE} dvi
-        WORKING_DIRECTORY "${absolute_latex_path}"
-        DEPENDS "${absolute_latex_path}"
-        COMMENT "Calling doxygen's generated makefile for dvi (this is error prone!)."
-        VERBATIM 
-      )
-    
-      add_custom_command(
-        OUTPUT ${pdf_output}
-        COMMAND ${MAKE_EXECUTABLE} pdf
-        WORKING_DIRECTORY "${absolute_latex_path}"
-        DEPENDS "${absolute_latex_path}"
-        COMMENT "Calling doxygen's generated makefile for pdf (this is error prone!)."
-        VERBATIM 
-      )
+      message(STATUS "Adding doxygen LaTeX targets.")
       
-      add_custom_command(
-        OUTPUT ${ps_output}
-        COMMAND ${MAKE_EXECUTABLE} ps
-        WORKING_DIRECTORY "${absolute_latex_path}"
-        DEPENDS "${absolute_latex_path}"
-        COMMENT "Calling doxygen's generated makefile for ps (this is error prone!)."
-        VERBATIM 
-      )
-
-      add_custom_target(
-        ${target_name}_ps
-        DEPENDS ${ps_output}
-        COMMENT "Call ps makefile if ps isn't built."
-      )
+      if (NOT MAKE_EXECUTABLE)
+        message("Make exe can't be found: doxygen LaTeX is not buildable.")
+      else()
+        # TODO: only the pdf command works!  Could it be an issue with USE_PDFLATEX?
+        #   I think not.  It's prolly because pdflatex directly outputs the pdf and
+        #   the others only output a dvi which can be converted either way.  Otherwise
+        #   I can use ps2pdf... I need to test exactly what is outputted when not 
+        #   pdflatex.
+        #   
+        add_custom_command(
+          OUTPUT ${dvi_output}
+          COMMAND ${MAKE_EXECUTABLE} dvi
+          WORKING_DIRECTORY "${absolute_latex_path}"
+          DEPENDS "doxygen/latex/Makefile"
+          COMMENT "Calling doxygen's generated makefile for dvi (this is error prone!)."
+          VERBATIM 
+        )
       
-      add_custom_target(
-        ${target_name}_dvi
-        DEPENDS ${dvi_output}
-        COMMENT "Call dvi makefile if dvi isn't built."
-      )
-      
-      add_custom_target(
-        ${target_name}_pdf
-        DEPENDS ${pdf_output}
-        COMMENT "Call pdf makefile if pdf isn't built."
-      )
+        add_custom_command(
+          OUTPUT ${pdf_output}
+          COMMAND ${MAKE_EXECUTABLE} pdf
+          WORKING_DIRECTORY "${absolute_latex_path}"
+          DEPENDS "${CMAKE_BINARY_DIR}/doxygen/latex/Makefile"
+          COMMENT "Calling doxygen's generated makefile for pdf (this is error prone!)."
+          VERBATIM 
+        )
+        
+        add_custom_command(
+          OUTPUT ${ps_output}
+          COMMAND ${MAKE_EXECUTABLE} ps
+          WORKING_DIRECTORY "${absolute_latex_path}"
+          DEPENDS "doxygen/latex/Makefile"
+          COMMENT "Calling doxygen's generated makefile for ps (this is error prone!)."
+          VERBATIM 
+        )
+  
+        add_custom_target(
+          ${target_name}_ps
+          DEPENDS ${ps_output}
+          COMMENT "Call ps makefile if ps isn't built."
+        )
+        
+        add_custom_target(
+          ${target_name}_dvi
+          DEPENDS ${dvi_output}
+          COMMENT "Call dvi makefile if dvi isn't built."
+        )
+        
+        add_custom_target(
+          ${target_name}_pdf
+          DEPENDS ${pdf_output}
+          COMMENT "Call pdf makefile if pdf isn't built."
+        )
+      endif()
     endif()
   endif()
-  
   
 endfunction()
 

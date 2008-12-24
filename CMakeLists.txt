@@ -32,7 +32,7 @@ endif()
 # General options
 option(WANT_DOCS "Install documentation - when off, all other docs options are off." YES)
 option(WANT_DOXYGEN_HTML "Install HTML made by doxygen" YES)
-option(WANT_DOXYGEN_PDF "Install PDF from doxygen (needs pdfLaTeX)" NO)
+option(WANT_DOXYGEN_PDF "Install PDF from doxygen (needs pdfLaTeX)" YES)
 
 set(DOXYGEN_DOXYFILE_TEMPLATE "${CMAKE_SOURCE_DIR}/Doxyfile.default" CACHE STRING 
     "Base doxyfile.  Mostly useful for developers.  Certain vars will be overwritten (in/output paths mostly).")
@@ -41,8 +41,7 @@ mark_as_advanced(
   DOXYGEN_DOXYFILE_TEMPLATE 
   WANT_DOXYGEN_PDF_GRAPHICS 
   WANT_DOXYGEN_HTML_GRAPHICS 
-  WANT_DOXYGEN_HTML 
-  WANT_DOXYGEN_PDF
+  WANT_DOXYGEN_HTML WANT_DOXYGEN_PDF
 )
 
 # Set it to itself so that this var can be in the toolchain file
@@ -145,8 +144,7 @@ set(PDFDIR "${DATADIR}/doc/lrcon/")
 set(DVIDIR "${DATADIR}/doc/lrcon/")
 set(PSDIR "${DATADIR}/doc/lrcon/")
 
-
-
+message(STATUS "Adding install targets.")
 
 if (WANT_DOCS) 
   # Documentation
@@ -159,13 +157,12 @@ if (WANT_DOCS)
 endif(WANT_DOCS)
 
 # Header files
-install(FILES include/lrcon.hpp DESTINATION include/)
+install(FILES include/lrcon.hpp DESTINATION ${INCLUDEDIR})
 install(
   FILES include/lrcon/query.hpp
         include/lrcon/rcon.hpp
         include/lrcon/common.hpp
-  PUBLIC_HEADER
-  DESTINATION ${INCLUDEDIR}
+  DESTINATION ${INCLUDEDIR}/lrcon/
 )
 
 # Binaries
@@ -175,6 +172,8 @@ install(TARGETS ${BIN_QRCON} DESTINATION ${BINDIR})
 #################
 ## CPack Stuff ##
 #################
+
+message(STATUS "Doing CPack stuff.")
 
 # Note: Source package effectively snapshots the source directory, including copying
 # symlinks.  This is how doxygen is built.  Therefore, to make a full release
