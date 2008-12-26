@@ -1,1 +1,44 @@
-/usr/share/automake-1.10/INSTALL
+== Building with CMake ==
+
+cd path/to/source
+mkdir build
+cd build
+# See cmake --help for more about generators.
+cmake -G"your wanted generator type" path/to/source
+# Use ccmake gui to perform the configure step.
+ccmake .
+
+# If unix install
+make 
+make install
+
+Otherwise do whatever your generator normally does to install stuff.
+
+Toggleable options in ccmake are all named WANT_<feature>.  There are more in
+advanced mode, but those are typically for a way to quickly remove a dependancy.
+
+The cmake cache only needs to be written to once.  After that, all rebuilding is 
+automated just by using make (or your generator's equivilent).
+
+== Cross-Compiling ==
+
+As above, but for the cmake command add -DCMAKE_TOOLCHAIN_FILE=your-toolchain.  Look
+at cmake's documentation for how to define this.
+
+The Qt parts are extremely hard to get working.  Probably what will happen is that
+it will find the Qt binaries, but not source files and libraries.  The procedure is
+to get a version of Qt compiled on windows, move it to Linux, then in the ccmake
+step toggle `advanced mode' and define evey QT_ prefixed variable there which has
+a value suffixed -NOTFOUND.  Not all of Qt is used: look at the LDFLAGS (and others)
+which are used on the Unix build to see which libs are necessary to be defined.
+
+This can also be done with -DVAR=VAL from the cmake command if you wanted to script
+it (recommended if you are expecting to recompile later).
+
+This is very manual and extremely annoying, but it seems to be almost impossible to 
+get any introspective information about the Qt installation without using the defaults
+it was installed with despite the fact that one can cross-compile a Qt program with 
+a qmake spec file, just like cmake has the TOOLCHAIN_FILE.  In fact, it might help
+to write such a spec file with your cross-compile environment defined and try and 
+extract the necessary variables from the generated project.
+
