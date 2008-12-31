@@ -111,18 +111,17 @@ add_doxygen(
   "${DOXYGEN_FLAGS}"
 )
 
-# TODO: i'm  pretty sure this is redundant now I have 
-#   the file outputs done, but I still can't pass a value
-#   back up the stack.
-# if (WANT_DOXYGEN_REBUILD)
-#   # add doxygen to all (add_dependancies usage isn't clear because `all' might not be
-#   # the name of the ALL target)
-#   add_custom_target(ALL DEPENDS ${DOXYGEN_TARGET})
-# elseif(WANT_DOXYGEN_PDF OR WANT_DOXYGEN_HTML)
-#   if (NOT EXISTS "${DOXYGEN_IN_SOURCEDIR}")
-#     message(FATAL_ERROR "Documentation isn't available to install; set WANT_DOXYGEN_REBUILD or all the DOXYGEN targets to NO")
-#   endif()
-# endif()
+# This is necessary because aparently install targets don't catch output dependencies 
+# properly...
+if (WANT_DOCS)
+  if (WANT_DOXYGEN_PDF)
+    
+  endif()
+  
+  if (WANT_DOXYGEN_HTML)
+    
+  endif()
+endif()
 
 
 
@@ -150,8 +149,12 @@ if (WANT_DOCS)
   )
   
   if (WANT_DOXYGEN_HTML)
+    # TODO all the paths here should be dynamic, based on what we forced above
+    # TODO this would be nicer in a lib script which knows about doxygen
+    add_custom_target(useless_target2 ALL DEPENDS "${CMAKE_BINARY_DIR}/doxygen/html")
+  
     install(
-      DIRECTORY ${CMAKE_BINARY_DIR}/doxygen/html/
+      DIRECTORY "${CMAKE_BINARY_DIR}/doxygen/html"
       DESTINATION ${DOCDIR}/html
       PATTERN "*.png"
       PATTERN "*.html"
@@ -160,8 +163,8 @@ if (WANT_DOCS)
   endif()
   
   if (WANT_DOXYGEN_PDF)
-    # TODO is docdir/lates the right place to install it?  It's nice for my release scripts... but not
-    #   for a real release I think...
+    add_custom_target(useless_target1 ALL DEPENDS "${CMAKE_BINARY_DIR}/doxygen/latex/refman.pdf")
+    
     install(
       FILES ${CMAKE_BINARY_DIR}/doxygen/latex/refman.pdf
       DESTINATION ${DOCDIR}/latex
