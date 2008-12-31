@@ -90,10 +90,6 @@ list(APPEND DOXYGEN_FLAGS "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/")
 list(APPEND DOXYGEN_FLAGS "INPUT = ${CMAKE_SOURCE_DIR}/include/")
 list(APPEND DOXYGEN_FLAGS "PROJECT_NAME = ${PROJECT_NAME}")
 list(APPEND DOXYGEN_FLAGS "PROJECT_NUMBER = ${PROJECT_VERSION}")
-# TODO: for a maintainer build, doxygen should do into the source tree since
-#       I need to distribute it as part of the tarball.  Perhaps I can solve
-#       some of this with CPack?  Maybe CPack can manually add in built 
-#       doxygen to the source tarball... or just follow a symlink?
 list(APPEND DOXYGEN_FLAGS "OUTPUT_DIRECTORY = ${CMAKE_BINARY_DIR}/doxygen/")
 
 if (WANT_DOXYGEN_PDF)
@@ -153,7 +149,26 @@ if (WANT_DOCS)
     DESTINATION ${DOCDIR}
   )
   
-  doxygen_install_targets("${DOXYGEN_TARGET}" "${DOXYGEN_INSTALLABLES}" 1)
+  # TODO would be much nicer if this was done by the doxygen lib, since only it knows
+  #      if certain things have been disabled or not.  It seems very dificult to keep 
+  #      it working otherwise.  Perhaps the  lib needs to deal with things that have 
+  #      been forced or not differently.  Probably we should require that certain options
+  #      are forced if they are going to be installed...
+  install(
+    DIRECTORY ${CMAKE_BINARY_DIR}/doxygen/html/
+    DESTINATION ${DOCDIR}/html
+    PATTERN "*.png"
+    PATTERN "*.html"
+    PATTERN "*.css"
+  )
+  
+  # TODO is docdir/lates the right place to install it?  It's nice for my release scripts... but not
+  #   for a real release I think...
+  install(
+    FILES ${CMAKE_BINARY_DIR}/doxygen/latex/refman.pdf
+    DESTINATION ${DOCDIR}/latex
+  )
+  
 endif(WANT_DOCS)
 
 # Header files
@@ -174,6 +189,7 @@ install(TARGETS ${BIN_QRCON} DESTINATION ${BINDIR})
 #################
 
 message(STATUS "Doing CPack stuff.")
+message("Note: doc/ must be added into the source dir manually for a source package!")
 
 # Note: Source package effectively snapshots the source directory, including copying
 # symlinks.  This is how doxygen is built.  Therefore, to make a full release
@@ -194,6 +210,8 @@ set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/build-aux/install-re
 string(REGEX REPLACE "^([0-9]+).*" "\\1" PROJECT_MAJOR ${PROJECT_VERSION})
 string(REGEX REPLACE "^[^.]+\\.([0-9]+).*" "\\1" PROJECT_MINOR ${PROJECT_VERSION})
 string(REGEX REPLACE "^[^.]+\\.[^.]+\\.([0-9]+).*" "\\1" PROJECT_PATCH ${PROJECT_VERSION})
+string(REGEX REPLACE "^[^.]+\\.[^.]+\\.[^\\-]-([0-9]+).*" "\\1" PROJECT_SNAPSHOT ${PROJECT_VERSION})
+# TODO: is snapshot not handled by CPack?
 set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_PATCH})
@@ -210,6 +228,9 @@ set(CPACK_BINARY_TZ "OFF")
 # Yes, you really need all that escape crap.
 # TODO: make a user-defined var for extra stuff to ignore
 set(CPACK_SOURCE_IGNORE_FILES "/\\\\..*/;~$;/releases/;/${CMAKE_BINARY_DIR}/;/source-server/;/_notes/;doc/html/.*\\\\.md5$;/_notes/;doc/html/.*\\\\.map$;Makefile")
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}")
+
+
 set(CPACK_PACKAGE_EXECUTABLES "MyExecutable" "My Executable")
 
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")

@@ -112,6 +112,8 @@ function(add_doxygen installables_var target_name template_file directives_list)
   message(STATUS "Adding doxygen target ${target_name} from template file ${template_file}.")
   message("Note: output paths and generators should not be changed in the template file without re-configuring")
 
+  # TODO silly limitation -- need to cause the buildsystem to reconfigure if the base doxyfile changes
+
   if(NOT CAT_EXE) 
     message("Guessing the name of cat/type as `cat'.  If doxygen doesn't work, manually define all paths in the base doxyfile.")
     set(CAT_EXE cat)
@@ -142,7 +144,7 @@ function(add_doxygen installables_var target_name template_file directives_list)
   # Confs relevant for installation:
   # - HTML_FILE_EXTENSION DOT_IMAGE_FORMAT 
   # 
-  # add_doxygen doesn't have explicit suppor for this yet:
+  # add_doxygen doesn't have explicit support for this yet:
   # - GENERATE_RTF RTF_OUTPUT
   # - GENERATE_HTMLHELP CHM_FILE
   #   - GENERATE_CHI (means a seperate file comes with HTMLHELP)
@@ -199,10 +201,6 @@ function(add_doxygen installables_var target_name template_file directives_list)
     message("No doxygen output dir given.  Doxygen targets can't be added.")
     return()
   endif()
-
-  # TODO: do we do this?  Might be better to allow it to be a 
-  #   full path... but encourage it not to be... ehh.  I'm not
-  #   sure how much it really matters.
 
   if (NOT conf_generate_html AND NOT conf_generate_man AND NOT conf_generate_latex)
     message(STATUS "I'm confused; doxygen doesn't seem to be set to generate anything.")
