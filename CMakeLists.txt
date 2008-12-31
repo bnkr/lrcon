@@ -35,7 +35,7 @@ option(WANT_DOXYGEN_HTML "Install HTML made by doxygen" YES)
 option(WANT_DOXYGEN_PDF "Install PDF from doxygen (needs pdfLaTeX)" YES)
 
 set(DOXYGEN_DOXYFILE_TEMPLATE "${CMAKE_SOURCE_DIR}/Doxyfile.default" CACHE STRING 
-    "Base doxyfile.  Mostly useful for developers.  Certain vars will be overwritten (in/output paths mostly).")
+    "Base doxyfile.  Mostly useful for developers.  Certain vars will be overwritten by cmake (in/output paths mostly).")
 
 mark_as_advanced(
   DOXYGEN_DOXYFILE_TEMPLATE 
@@ -149,25 +149,24 @@ if (WANT_DOCS)
     DESTINATION ${DOCDIR}
   )
   
-  # TODO would be much nicer if this was done by the doxygen lib, since only it knows
-  #      if certain things have been disabled or not.  It seems very dificult to keep 
-  #      it working otherwise.  Perhaps the  lib needs to deal with things that have 
-  #      been forced or not differently.  Probably we should require that certain options
-  #      are forced if they are going to be installed...
-  install(
-    DIRECTORY ${CMAKE_BINARY_DIR}/doxygen/html/
-    DESTINATION ${DOCDIR}/html
-    PATTERN "*.png"
-    PATTERN "*.html"
-    PATTERN "*.css"
-  )
+  if (WANT_DOXYGEN_HTML)
+    install(
+      DIRECTORY ${CMAKE_BINARY_DIR}/doxygen/html/
+      DESTINATION ${DOCDIR}/html
+      PATTERN "*.png"
+      PATTERN "*.html"
+      PATTERN "*.css"
+    )
+  endif()
   
-  # TODO is docdir/lates the right place to install it?  It's nice for my release scripts... but not
-  #   for a real release I think...
-  install(
-    FILES ${CMAKE_BINARY_DIR}/doxygen/latex/refman.pdf
-    DESTINATION ${DOCDIR}/latex
-  )
+  if (WANT_DOXYGEN_PDF)
+    # TODO is docdir/lates the right place to install it?  It's nice for my release scripts... but not
+    #   for a real release I think...
+    install(
+      FILES ${CMAKE_BINARY_DIR}/doxygen/latex/refman.pdf
+      DESTINATION ${DOCDIR}/latex
+    )
+  endif()
   
 endif(WANT_DOCS)
 
@@ -222,7 +221,7 @@ set(CPACK_SOURCE_TZ "OFF")
 
 set(CPACK_BINARY_STGZ "OFF")
 set(CPACK_BINARY_TBZ2 "OFF")
-set(CPACK_BINARY_TGZ "OFF")
+set(CPACK_BINARY_TGZ "ON")
 set(CPACK_BINARY_TZ "OFF")
 
 # Yes, you really need all that escape crap.

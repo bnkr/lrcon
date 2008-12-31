@@ -11,17 +11,37 @@
 # FUNCTIONS:
 #
 # add_doxygen(target_name installables_var template_file directives_list)
+# 
 #   Make ${target_name}, and ${target_name}_pdf,dvi,ps.  Generate rules which
 #   will build the doxygen LaTeX stuff.  add_doxygen() attempts to depend
 #   on everything that doxygen needs (eg additional header/footer files)
 #   but if it didn't detect them all, touch the generated doxyfile, which is 
-#   always:
+#   always depended on:
 #   
 #     ${CMAKE_BINARY_DIR}/${target_name}-doxyfile-generated
 #   
-#   Doxygen chooses the path for outputs.  Its working directory is the source
-#   dir, therefore if you wish to build to the binary directory (good idea) then
-#   you need OUTPUT_DIRECTORY to be an absolute path.  Other output directories
+#   WARNING: 
+#     add_doxygen() forces some config options based on the dependancies
+#     found and configuration directives.  (Eg USE_PDFLATEX if turned off if 
+#     the pdflatex bin was not found).  However, in the interests of flexibility
+#     I don't force all that many and (crucially) I don't check the template file
+#     for changes.  This means that in the previous example, you could edit the 
+#     additions file and the changes won't be noticed.
+#     
+#     The real meaning of this is that if the template file has an output turned
+#     off then the install target for it will naturally be unable to work.  You
+#     should therefore probably use the directives_list to force all options to do
+#     with paths and directories.
+#     
+#     So in summary to the summary: it's a good idea to have a WANT_DOXYGEN_DOCS 
+#     and WANT_PDF etc, use the directives_list to force the values which 
+#     depend on them, and finally only generate install targets with respect to
+#     the WANT_x variables.  If X is on, then force it in the conf and generate
+#     the install target; otherwise force it off and don't generate the install.
+#
+#   The doxygen binary chooses the path for outputs.  Its working directory is the 
+#   source dir, therefore if you wish to build to the binary directory (good idea) 
+#   then you need OUTPUT_DIRECTORY to be an absolute path.  Other output directories
 #   are are recommended be relative to this (although it *shouldn't* matter).
 #   Same goes for using empty output directories (doxygen will put the output
 #   in the main output dir).
@@ -29,16 +49,6 @@
 #   Look at ${CMAKE_BINARY_DIR}/${target_name}-doxyfile-forced for the options 
 #   which have been forced: your directives_list is at the start of this, with 
 #   add_doxygen()'s overrides after.
-#   
-#   WARNING: add_doxygen() forces some config options based on the dependancies
-#   found and configuration directives.  (Eg USE_PDFLATEX if turned off if 
-#   the pdflatex command was not found).  However, in the interests of flexibility
-#   I don't force all that many and (crucially) I don't check the template file
-#   for changes.  This means that in the previous example, you could edit the 
-#   additions file and the changes won't be noticed.
-#   
-#   TODO: a solution for above warning (should be optional) - cause buildsystem
-#     to reconfigure somehow?
 #   
 #   installables_var
 #     Name of a variable to return a list of installable things to.  This list
@@ -65,13 +75,6 @@
 #     ${directives_list} does not need to contain anything, but it is normally useful
 #     to make option()s which control things like GENERATE_LATEX.  Note though that
 #     add_doxygen() might override them if it thinks they won't work.
-#     
-#     It is sensible to put things like input/output paths in the directives so 
-#     that changes in the template file can't mess up the install dependancies.
-#     Users would either reconfigure through cmake, or manually call the target
-#     and install what they built.  For example, an OUTPUT is set for LaTeX files
-#     but if the user turns LaTeX off or changes the path, then the rules will
-#     say they output stuff that really they do not.
 #   
 #   Warning: things may not function properly if doxygen builds output type
 #   into the same directory.
@@ -122,7 +125,7 @@ function(add_doxygen installables_var target_name template_file directives_list)
   set(doxygen_conf_file "${CMAKE_BINARY_DIR}/${target_name}-doxyfile-generated")
   set(additions_file "${CMAKE_BINARY_DIR}/${target_name}-doxyfile-forced")
   
-  message("Doxygen forced vars are in ${additions_file}.  Redefining them in the base Doxyfile will not work without re-configuring!")
+  message("Doxygen forced vars are in ${additions_file}.")
 
   ## Detect paths and vars defined by the template file and the overrides ##
   set(conf_output_dir "doxygen")
@@ -157,6 +160,19 @@ function(add_doxygen installables_var target_name template_file directives_list)
   # There are other things, like header files etc which we should depend
   # on: MSCGEN_PATH, RTF_STYLESHEET_FILE RTF_EXTENSIONS_FILE HTML_STYLESHEET
   # HTML_HEADER HTML_FOOTER LATEX_HEADER 
+  # 
+  # TODO: 
+  #   it might be better to just require that all these parameters are forced... it
+  #   will probably break install targets otherwise... the main tricky thing is that
+  #   we turn stuff off that *might* have been on initially which is confusing...
+  #   
+  #   Solutions?
+  #   - require all contentious things to be forced
+  #   - detect all contentious things everywhere and error immediately if they are not 
+  #     enforcable
+  #     - best, but the user needs to have a way to work around it 
+  #       - suggestion in docs that the maintainer adds a WANT_x doc?
+  #     - hard work
   # 
   file(READ ${template_file} file)
   
@@ -303,6 +319,14 @@ function(add_doxygen installables_var target_name template_file directives_list)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS ${doxygen_conf_file}
     COMMENT "Generating main doxygen (html, .tex files ...)"
+    VERBATIM 
+  )
+  
+  # TODO dynamic paths; also if this works, then always use directories as the output.
+  add_custom_command(
+    OUTPUT "${CMAKE_BINARY_DIR}/doxygen/html"
+    DEPENDS ${absolute_doxygen_path} 
+    COMMENT "Phony target to generate HTML."
     VERBATIM 
   )
   
