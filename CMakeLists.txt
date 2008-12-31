@@ -33,20 +33,16 @@ endif()
 option(WANT_DOCS "Install documentation - when off, all other docs options are off." YES)
 option(WANT_DOXYGEN_HTML "Install HTML made by doxygen" YES)
 option(WANT_DOXYGEN_PDF "Install PDF from doxygen (needs pdfLaTeX)" YES)
+option(WANT_DOXYGEN_REBUILD "Regenerate doxygen and install that instead of the distributed docs." NO)
 
 set(DOXYGEN_DOXYFILE_TEMPLATE "${CMAKE_SOURCE_DIR}/Doxyfile.default" CACHE STRING 
     "Base doxyfile.  Mostly useful for developers.  Certain vars will be overwritten by cmake (in/output paths mostly).")
 
 mark_as_advanced(
   DOXYGEN_DOXYFILE_TEMPLATE 
-  WANT_DOXYGEN_PDF_GRAPHICS 
-  WANT_DOXYGEN_HTML_GRAPHICS 
+  WANT_DOXYGEN_REBUILD
   WANT_DOXYGEN_HTML WANT_DOXYGEN_PDF
 )
-
-# Set it to itself so that this var can be in the toolchain file
-# set(QT_QMAKE_SPEC_FILE "${QT_QMAKE_SPEC_FILE}" CACHE STRING 
-#     "Manually defined qmake spec files.  Used by patched Qt4 finder to ease cross-compiling.")
 
 ###########################
 ## Building normal stuff ##
@@ -111,16 +107,20 @@ add_doxygen(
   "${DOXYGEN_FLAGS}"
 )
 
-# This is necessary because aparently install targets don't catch output dependencies 
-# properly...
-if (WANT_DOCS)
-  if (WANT_DOXYGEN_PDF)
-    
-  endif()
-  
-  if (WANT_DOXYGEN_HTML)
-    
-  endif()
+# Tweak dependancies for an install from rebuild vs. an install from distributed versions
+# TODO all the paths here should be dynamic, based on what we forced above
+if (WANT_DOXYGEN_REBUILD)
+  message("Will install doxygen from ${CMAKE_BINARY_DIR}/doxygen")
+  set(DOXYGEN_INSTALL_HTML_DIR "${CMAKE_BINARY_DIR}/doxygen/html")
+  set(DOXYGEN_INSTALL_PDF_FILE "${CMAKE_BINARY_DIR}/doxygen/latex/refman.pdf")
+  # This is necessary because aparently install targets don't catch output dependencies 
+  # properly...
+  add_custom_target(useless_target2 ALL DEPENDS "${CMAKE_BINARY_DIR}/doxygen/html")
+  add_custom_target(useless_target1 ALL DEPENDS "${CMAKE_BINARY_DIR}/doxygen/latex/refman.pdf")
+else()
+  message("Will install doxygen from ${CMAKE_SOURCE_DIR}/doc")
+  set(DOXYGEN_INSTALL_HTML_DIR "${CMAKE_SOURCE_DIR}/doc/html")
+  set(DOXYGEN_INSTALL_PDF_FILE "${CMAKE_SOURCE_DIR}/doc/latex/refman.pdf")
 endif()
 
 
@@ -149,12 +149,8 @@ if (WANT_DOCS)
   )
   
   if (WANT_DOXYGEN_HTML)
-    # TODO all the paths here should be dynamic, based on what we forced above
-    # TODO this would be nicer in a lib script which knows about doxygen
-    add_custom_target(useless_target2 ALL DEPENDS "${CMAKE_BINARY_DIR}/doxygen/html")
-  
     install(
-      DIRECTORY "${CMAKE_BINARY_DIR}/doxygen/html"
+      DIRECTORY "${DOXYGEN_INSTALL_HTML_DIR}"
       DESTINATION ${DOCDIR}/html
       PATTERN "*.png"
       PATTERN "*.html"
@@ -163,13 +159,13 @@ if (WANT_DOCS)
   endif()
   
   if (WANT_DOXYGEN_PDF)
-    add_custom_target(useless_target1 ALL DEPENDS "${CMAKE_BINARY_DIR}/doxygen/latex/refman.pdf")
     
     install(
-      FILES ${CMAKE_BINARY_DIR}/doxygen/latex/refman.pdf
+      FILES "${DOXYGEN_INSTALL_PDF_FILE}"
       DESTINATION ${DOCDIR}/latex
     )
   endif()
+
   
 endif(WANT_DOCS)
 
