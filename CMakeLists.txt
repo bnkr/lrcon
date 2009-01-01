@@ -151,10 +151,11 @@ if (WANT_DOCS)
   if (WANT_DOXYGEN_HTML)
     install(
       DIRECTORY "${DOXYGEN_INSTALL_HTML_DIR}"
-      DESTINATION ${DOCDIR}/html
+      DESTINATION ${DOCDIR}
       PATTERN "*.png"
       PATTERN "*.html"
       PATTERN "*.css"
+      PATTERN "*.gif"
     )
   endif()
   
