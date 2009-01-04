@@ -225,7 +225,7 @@ function(add_doxygen installables_var target_name template_file directives_list)
 
   ## Config forces based on found programs ##
 
-  if (NOT DOT_PATH)
+  if (NOT DOXYGEN_DOT_PATH)
     file(APPEND ${additions_file} "HAVE_DOT = no\n")
   else()
     file(APPEND ${additions_file} "DOT_PATH = ${DOXYGEN_DOT_PATH}\n")
