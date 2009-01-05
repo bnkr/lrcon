@@ -1,3 +1,5 @@
+# == Overview ==
+#
 # Doxygen configurator.  Does its best to get a working build of doxygen
 # wherever you are.  You should use this to make the developer docs, and
 # then CPack to put it in the pakage -- CPack will copy destinations of 
@@ -8,9 +10,56 @@
 # 
 # This file finds() all the necessary rubbish that doxygen needs.
 #
-# FUNCTIONS:
+# If you want to see what's going on, set DOXYGEN_CMAKE_VERBOSE to a true
+# value.
 #
-# add_doxygen(target_name installables_var template_file directives_list)
+# == Quick guide ==
+#
+#   option(WANT_DOXYGEN ...
+#   option(WANT_DOXYGEN_REBUILD...
+#   if (WANT_DOXYGEN)
+#     set(DOXYGEN_WANTS "pdf" "html")
+#   endif()
+#
+#   set(DOXYGEN_TARGET "doxygen")
+#   doxygen_setup_flags(DOXYGEN_FLAGS "${DOXYGEN_TARGET}" "${DOXYGEN_WANTS}")
+#   add_doxygen("${DOXYGEN_TARGET}" "${CMAKE_SOURCE_DIR}/Doxyfile.base"
+#               "${DOXYGEN_FLAGS}")
+#
+#   if (WANT_DOXYGEN_REBUILD)
+#     set(INSTALL_FROM "")
+#   else()
+#     set(INSTALL_FROM "${CMAKE_SOURCE_DIR}/doc/")
+#   endif()
+#
+#   doxygen_install_targets(
+#     "${DOXYGEN_TARGET}" 
+#     "${DOXYGEN_WANTS}" 
+#     "${DOCDIR}" 
+#     "${INSTALL_FROM}"
+#   )
+# 
+# This gives you a bunch of doxygen-related targets, plus the ability to 
+# either install docs that you distributed or build new ones.  Also note
+# that this method allows you to have multiple doxygen builds, provided
+# you do not interlace the doxygen_* macros; install needs variables defined
+# by flags.
+#
+# == Quick Warnings ==
+#
+# Explained fully elsewhere, but just for clarity:
+#
+# - you can't directly put the outputted HTML dir as an install target; you
+#   have to make it a dependancy of ALL with add_custom_target (for some reason)
+# - watch the console for output from add_doxygen - it will turn certain things
+#   off if they cannot be fullfiled and it will tell you so.
+# - the macro doxygen_install.. requires some flags set by doxygen_setup...
+#   so don't overwrite them until doxygen_install is finished. 
+# 
+# == Complete Documentation ==
+#
+# FUNCTION: 
+# * add_doxygen(target_name template_file directives_list)
 # 
 #   Make ${target_name}, and ${target_name}_pdf,dvi,ps.  Generate rules which
 #   will build the doxygen LaTeX stuff.  add_doxygen() attempts to depend
@@ -38,21 +87,19 @@
 #     depend on them, and finally only generate install targets with respect to
 #     the WANT_x variables.  If X is on, then force it in the conf and generate
 #     the install target; otherwise force it off and don't generate the install.
+#     
+#     Note: the other doxygen_* functions/macros help with this task.
 #
 #   The doxygen binary chooses the path for outputs.  Its working directory is the 
 #   source dir, therefore if you wish to build to the binary directory (good idea) 
 #   then you need OUTPUT_DIRECTORY to be an absolute path.  Other output directories
 #   are are recommended be relative to this (although it *shouldn't* matter).
 #   Same goes for using empty output directories (doxygen will put the output
-#   in the main output dir).
+#   in the main output dir but it doesn't actually *say* it will work).
 #   
 #   Look at ${CMAKE_BINARY_DIR}/${target_name}-doxyfile-forced for the options 
 #   which have been forced: your directives_list is at the start of this, with 
 #   add_doxygen()'s overrides after.
-#   
-#   installables_var
-#     Name of a variable to return a list of installable things to.  This list
-#     is relative to the main doxygen output directory; it is not a full path.
 #   
 #   target_name
 #     The targets ${target_name}, ${target_name}_pdf, ${target_name}_dvi,
@@ -80,25 +127,73 @@
 #   into the same directory.
 #   
 #   Note: be sure to put list argument in quotes!
+# 
+#
+# MACRO:
+# * doxygen_setup_flags(flags_var target wants)
 #   
-# doxygen_install_targets(doxygen_target, target)
-#   Adds "make install" targets for generated doxygen files using the 
-#   DOXYGEN_${target}_* variables and the assumption that a mirror of 
-#   the doxygen build exists in the source dir.
+#   Sets up a list in ${flags_var} which sets up a default set of sensible
+#   overrides for the directives_list parameter of add_doxygen().
+#
+#   The flags var will contain overrides for all paths related to $wants.
+#
+#   The macro will set several useful paths (but remember that subsequent
+#   calls to this macro will wipe them!).  They are mostly designed for 
+#   having the documentaion mirrored in the sourcedir and installing from
+#   that unless the user requests a rebuild specifically.
+#
+#   - DOXYGEN_OUT_DIR = $binary_dir/$target
+#   - DOXYGEN_REL_HTML_DIR = relative path to html output
+#   - DOXYGEN_REL_LATEX_DIR = relative path to latex output
+#   - DOXYGEN_REL_PDF_FILE = relative path to outputted pdf file
+#   - DOXYGEN_HTML_DIR = $doxygen_out/$rel_html_dir
+#   - DOXYGEN_LATEX_DIR = $doxygen_out/$rel_latex_dir
+#   - DOXYGEN_PDF_FILE = $doxygen_out/$rel_pdf_file
+#
+#   This macro also responds to the following variables:
+#   - DOXYGEN_EXAMPLE_PATH = a *complete* path to the example dir; default
+#                            $srcdir/examples
+#   - DOXYGEN_INPUT_PATHS = a *string* containing *complete* paths to the
+#                           dirs for doxygen to read from, default is
+#                           $srcdir/include
+#   - PROJECT_NAME = used for the PROJECT_NAME configuration
+#   - PROJECT_VERSION = used for the PROJECT_NUNBER configuration
+#
+#   flags_var
+#     name of the variable to *append* to.
+#
+#   target
+#     name of the target that will be passed to add_doxygen
+#
+#   wants
+#     List of keys that are wanted.  Recognised values are:
+#     - pdf
+#     - html
+#
+# MACRO: 
+# * doxygen_install_targets(doxygen_target wants output_dir)
+#
+#   Adds "make install" targets for generated doxygen files using the
+#   variables which are set by doxygen_setup_flags.
 #   
 #   doxygen_target
 #     A target that was set up using add_doxygen()
+#
+#   wants
+#     Same as doxygen_setup_flags
+#
+#   output_dir
+#     Use this instead of DOXYGEN_OUT_DIR.  This is for installing from the
+#     source dir and means that the doxygen *will not* automatically be build
+#     with make all.
 # 
-#   want_rebuild
-#     Should the buildsystem automatically (and always) build doxygen?
-#     If want_rebuild, the install targets will point to the binarydir
-#     (where add_doxygen outputs to).  If not want_rebuild, each file
-#     is looked for in srcdir.  If it exists, then an install target is
-#     added for it.
-#   
+#   doxygen_root
+#
 #   The install locations are share/doc/${CMAKE_PROJECT_NAME}/.  Directories
 #   automatically have the useless stuff left over from doxygen stripped 
 #   out.
+
+
 
 find_package(Doxygen)
 find_package(LATEX)
@@ -107,7 +202,7 @@ find_program(CAT_EXE cat type)
 find_program(MAKE_EXECUTABLE make gmake nmake)
 
 
-function(add_doxygen installables_var target_name template_file directives_list)
+function(add_doxygen target_name template_file directives_list)
   if (NOT DOXYGEN_EXECUTABLE)
     message(STATUS "Ignoring doxygen targets due to no doxygen exe.")
   endif()
@@ -173,10 +268,14 @@ function(add_doxygen installables_var target_name template_file directives_list)
   #     - best, but the user needs to have a way to work around it 
   #       - suggestion in docs that the maintainer adds a WANT_x doc?
   #     - hard work
-  # 
+  # TODO:
+  # - need to deal with it properly when the paths are not complete (they are assumed to 
+  #   be in the srcdir.  This is necesasry or the dependancies might not work properly.
+
   file(READ ${template_file} file)
   
   # TODO: seriously?  This  should at least be done in a function somehow.
+  #  - first we should 
   string(
     REGEX MATCH
     "[Oo][Uu][Tt][Pp][Uu][Tt]_[Dd][Ii][Rr][Ee][Cc][Tt][Oo][Rr][Yy][^=]*=[\t\r ]*([^#]*).*" 
@@ -410,14 +509,129 @@ function(add_doxygen installables_var target_name template_file directives_list)
   
 endfunction()
 
-function(doxygen_install_targets target instalables want_rebuild)
-  message("FIXME: this function doesn't work yet.")
- 
-  return()
+macro(doxgyen_setup_flags flags_var target wants)
+  message(STATUS "Setting doxygen flags.")
 
+  set(DOXYGEN_OUT_DIR "${CMAKE_BINARY_DIR}/${target}")
+  
+  set(DOXYGEN_REL_HTML_DIR "html")
+  set(DOXYGEN_REL_LATEX_DIR "latex")
+  set(DOXYGEN_REL_PDF_FILE "latex/refman.pdf")
+
+  set(DOXYGEN_HTML_DIR "${DOXYGEN_OUT_DIR}/${DOXYGEN_REL_HTML_DIR}")
+  set(DOXYGEN_LATEX_DIR "${DOXYGEN_OUT_DIR}/${DOXYGEN_REL_LATEX_DIR}")
+  set(DOXYGEN_PDF_FILE "${DOXYGEN_OUT_DIR}/${DOXYGEN_REL_PDF_FILE}")
+
+  if (DOXYGEN_EXAMPLE_PATH)
+    list(APPEND ${flags_var} "EXAMPLE_PATH = ${DOXYGEN_EXAMPLE_PATH}/")
+  else()
+    list(APPEND ${flags_var} "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/")
+  endif()
+
+  if (DOXYGEN_INPUT_PATHS)
+    list(APPEND ${flags_var} "INPUT = ${DOXYGEN_INPUT_PATHS}")
+  else()
+    list(APPEND ${flags_var} "INPUT = ${CMAKE_SOURCE_DIR}/include/")
+  endif()
+
+  if (PROJECT_NAME)
+    list(APPEND ${flags_var} "PROJECT_NAME = ${PROJECT_NAME}")
+  endif()
+  if (PROJECT_VERSION)
+    list(APPEND ${flags_var} "PROJECT_NUMBER = ${PROJECT_VERSION}")
+  endif()
+
+  list(APPEND ${flags_var} "OUTPUT_DIRECTORY = ${DOXYGEN_OUT_DIR}")
+ 
+  foreach(iter ${wants})
+    if (${iter} MATCHES "pdf")
+      list(APPEND ${flags_var} "GENERATE_LATEX = yes")
+      list(APPEND ${flags_var} "LATEX_OUTPUT = ${DOXYGEN_REL_LATEX_DIR}")
+    elseif(${iter} MATCHES "html")
+      list(APPEND ${flags_var} "GENERATE_HTML = yes")
+      list(APPEND ${flags_var} "HTML_OUTPUT = ${DOXYGEN_REL_HTML_DIR}")
+    else()
+      message(FATAL_ERROR "doxygen_setup_flags(): unknown type of want '${iter}'")
+    endif()
+  endforeach()
+
+  if (DOXYGEN_CMAKE_VERBOSE)
+    message("doxgyen_setup_flags() finished, set values:")
+    message("- DOXYGEN_OUT_DIR = ${DOXYGEN_OUT_DIR}")
+  
+    message("- DOXYGEN_REL_HTML_DIR = ${DOXYGEN_REL_HTML_DIR}")
+    message("- DOXYGEN_REL_LATEX_DIR = ${DOXYGEN_REL_LATEX_DIR}")
+    message("- DOXYGEN_REL_PDF_FILE = ${DOXYGEN_REL_PDF_FILE}")
+
+    message("- DOXYGEN_HTML_DIR = ${DOXYGEN_HTML_DIR}")
+    message("- DOXYGEN_LATEX_DIR = ${DOXYGEN_LATEX_DIR}")
+    message("- DOXYGEN_PDF_FILE = ${DOXYGEN_PDF_FILE}")
+  endif()
+endmacro()
+
+macro(doxygen_install_targets doxygen_target wants install_to install_from)
   message(STATUS "Adding doxygen make install targets.")
 
+  if (install_from EQUAL "")
+    if (DOXYGEN_CMAKE_VERBOSE)
+      message("Installing from the built docs '${DOXYGEN_OUT_DIR}' -- will be built.")
+    endif()
 
-         
-endfunction()
+    set(install_from "${DOXYGEN_OUT_DIR}")
+    set(rebuild "YES")
+  else()
+    if (DOXYGEN_CMAKE_VERBOSE)
+      message("Installing from user-specified '${install_from}'")
+    endif()
+  endif()
+
+  if (DOXYGEN_CMAKE_VERBOSE)
+    message("wants: '${wants}' with target '${doxygen_target}'")
+    message("will install to '${install_to}'")
+  endif()
+
+  foreach(iter ${wants})
+    if (iter MATCHES "pdf")
+      set(file "${install_from}/${DOXYGEN_REL_PDF_FILE}")
+      set(inst "${install_to}/${DOXYGEN_REL_LATEX_DIR}") 
+      if (DOXYGEN_CMAKE_VERBOSE)
+        message("pdf:\n  from: ${file}\n  to: ${inst}")
+      endif()
+
+      if (rebuild)
+        add_custom_target(depend_${doxygen_target}_pdf ALL DEPENDS "${DOXYGEN_PDF_FILE}")
+      endif()
+
+      install(
+        FILES "${file}"
+        DESTINATION "${inst}"
+      )
+    elseif(iter MATCHES "html")
+      if (rebuild)
+        add_custom_target(depend_${doxygen_target}_html ALL DEPENDS "${DOXYGEN_HTML_DIR}")
+      endif()
+
+      set(file "${install_from}/${DOXYGEN_REL_HTML_DIR}")
+      set(inst "${install_to}")
+
+      if (DOXYGEN_CMAKE_VERBOSE)
+        message("html:\n  from: ${file}\n  to: ${inst}")
+      endif()
+
+      install(
+        DIRECTORY "${file}"
+        DESTINATION ${inst}
+        FILES_MATCHING
+        PATTERN "*.png"
+        PATTERN "*.html"
+        PATTERN "*.css"
+        PATTERN "*.gif"
+      )
+    else()
+      message(FATAL_ERROR "doxygen_install_targets(): unknown type of want '${iter}'")
+    endif()
+
+  endforeach()
+
+endmacro()
 

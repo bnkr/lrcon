@@ -78,68 +78,44 @@ target_link_libraries(${BIN_QRCON} ${QT_LIBRARIES} ${LRCON_LIBRARIES})
 ## Building Doxygen ##
 ######################
 
-# TODO: use list(APPEND output inputs...)
-
-set(DOXYGEN_IN_SOURCEDIR "${CMAKE_SOURCE_DIR}/doc/")
-
-list(APPEND DOXYGEN_FLAGS "EXAMPLE_PATH = ${CMAKE_SOURCE_DIR}/examples/")
-list(APPEND DOXYGEN_FLAGS "INPUT = ${CMAKE_SOURCE_DIR}/include/")
-list(APPEND DOXYGEN_FLAGS "PROJECT_NAME = ${PROJECT_NAME}")
-list(APPEND DOXYGEN_FLAGS "PROJECT_NUMBER = ${PROJECT_VERSION}")
-list(APPEND DOXYGEN_FLAGS "OUTPUT_DIRECTORY = ${CMAKE_BINARY_DIR}/doxygen/")
-
 if (WANT_DOXYGEN_PDF)
-  list(APPEND DOXYGEN_FLAGS "GENERATE_LATEX = yes")
+  list(APPEND DOXYGEN_WANTS "pdf")
+endif()
+if (WANT_DOXYGEN_HTML)
+  list(APPEND DOXYGEN_WANTS "html")
 endif()
 
-if (WANT_DOXYGEN_HTML) 
-  list(APPEND DOXYGEN_FLAGS "GENERATE_HTML = yes")
-endif()
+set(DOXYGEN_CMAKE_VERBOSE "yes")
 
-# TODO: horribly broken.  How do I return a variable by reference without 
-#   using a macro?
 set(DOXYGEN_TARGET "doxygen")
+doxgyen_setup_flags(
+  DOXYGEN_FLAGS 
+  "${DOXYGEN_TARGET}"
+  "${DOXYGEN_WANTS}"
+)
 
 add_doxygen(
-  DOXYGEN_INSTALLABLES
   ${DOXYGEN_TARGET}
   ${DOXYGEN_DOXYFILE_TEMPLATE}
   "${DOXYGEN_FLAGS}"
 )
 
-# Tweak dependancies for an install from rebuild vs. an install from distributed versions
-# TODO all the paths here should be dynamic, based on what we forced above
-if (WANT_DOXYGEN_REBUILD)
-  message("Will install doxygen from ${CMAKE_BINARY_DIR}/doxygen")
-  set(DOXYGEN_INSTALL_HTML_DIR "${CMAKE_BINARY_DIR}/doxygen/html")
-  set(DOXYGEN_INSTALL_PDF_FILE "${CMAKE_BINARY_DIR}/doxygen/latex/refman.pdf")
-  # This is necessary because aparently install targets don't catch output dependencies 
-  # properly...
-  add_custom_target(useless_target2 ALL DEPENDS "${CMAKE_BINARY_DIR}/doxygen/html")
-  add_custom_target(useless_target1 ALL DEPENDS "${CMAKE_BINARY_DIR}/doxygen/latex/refman.pdf")
-else()
-  message("Will install doxygen from ${CMAKE_SOURCE_DIR}/doc")
-  set(DOXYGEN_INSTALL_HTML_DIR "${CMAKE_SOURCE_DIR}/doc/html")
-  set(DOXYGEN_INSTALL_PDF_FILE "${CMAKE_SOURCE_DIR}/doc/latex/refman.pdf")
-endif()
-
-
-
 ##################
 ## Installation ##
 ##################
 
-# autotools style
+message(STATUS "Adding install targets.")
+
 set(INCLUDEDIR "include/")
 set(BINDIR "bin")
 set(DATADIR "share/")
+set(LIBDIR "lib/")
 set(DOCDIR "${DATADIR}/doc/lrcon/")
 set(HTMLDIR "${DATADIR}/doc/lrcon/")
 set(PDFDIR "${DATADIR}/doc/lrcon/")
 set(DVIDIR "${DATADIR}/doc/lrcon/")
 set(PSDIR "${DATADIR}/doc/lrcon/")
 
-message(STATUS "Adding install targets.")
 
 if (WANT_DOCS) 
   # Documentation
@@ -147,27 +123,19 @@ if (WANT_DOCS)
     FILES README COPYING 
     DESTINATION ${DOCDIR}
   )
-  
-  if (WANT_DOXYGEN_HTML)
-    install(
-      DIRECTORY "${DOXYGEN_INSTALL_HTML_DIR}"
-      DESTINATION ${DOCDIR}
-      PATTERN "*.png"
-      PATTERN "*.html"
-      PATTERN "*.css"
-      PATTERN "*.gif"
-    )
-  endif()
-  
-  if (WANT_DOXYGEN_PDF)
-    
-    install(
-      FILES "${DOXYGEN_INSTALL_PDF_FILE}"
-      DESTINATION ${DOCDIR}/latex
-    )
+
+  if (WANT_DOXYGEN_REBUILD)
+    set(INSTALL_FROM)
+  else()
+    set(INSTALL_FROM "${CMAKE_SOURCE_DIR}/doc/")
   endif()
 
-  
+  doxygen_install_targets(
+    "${DOXYGEN_TARGET}" 
+    "${DOXYGEN_WANTS}" 
+    "${DOCDIR}" 
+    "${INSTALL_FROM}"
+  )
 endif(WANT_DOCS)
 
 # Header files
@@ -180,25 +148,18 @@ install(
 )
 
 # Binaries
-install(TARGETS ${BIN_LRCON} DESTINATION ${BINDIR})
-install(TARGETS ${BIN_QRCON} DESTINATION ${BINDIR})
+install(
+  TARGETS ${BIN_LRCON} ${BIN_QRCON}
+  RUNTIME DESTINATION ${BINDIR}
+)
+
 
 #################
 ## CPack Stuff ##
 #################
 
 message(STATUS "Doing CPack stuff.")
-message("Note: doc/ must be added into the source dir manually for a source package!")
-
-# Note: Source package effectively snapshots the source directory, including copying
-# symlinks.  This is how doxygen is built.  Therefore, to make a full release
-# the current doxygen should be copied into a release dir instead of just symlinking
-# to the developer built docs.  This way uploaded docs point to the actual docs for
-# the release, not the next release!
-
-# TODO: cpack should force doxygen to build: add_dependancies to package_source and package?
-# TODO: cpack should force moc to run (but that first requires that the mocfiles are 
-#       build into the source which doesn't happen yet)
+message("Note: latest doc/ must be added into the source dir manually for a source package!")
 
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "My funky project")
 set(CPACK_PACKAGE_VENDOR "Me, myself, and I")
@@ -210,7 +171,6 @@ string(REGEX REPLACE "^([0-9]+).*" "\\1" PROJECT_MAJOR ${PROJECT_VERSION})
 string(REGEX REPLACE "^[^.]+\\.([0-9]+).*" "\\1" PROJECT_MINOR ${PROJECT_VERSION})
 string(REGEX REPLACE "^[^.]+\\.[^.]+\\.([0-9]+).*" "\\1" PROJECT_PATCH ${PROJECT_VERSION})
 string(REGEX REPLACE "^[^.]+\\.[^.]+\\.[^\\-]-([0-9]+).*" "\\1" PROJECT_SNAPSHOT ${PROJECT_VERSION})
-# TODO: is snapshot not handled by CPack?
 set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_PATCH})
@@ -226,9 +186,8 @@ set(CPACK_BINARY_TZ "OFF")
 
 # Yes, you really need all that escape crap.
 # TODO: make a user-defined var for extra stuff to ignore
-set(CPACK_SOURCE_IGNORE_FILES "/\\\\..*/;~$;/releases/;/${CMAKE_BINARY_DIR}/;/source-server/;/_notes/;doc/html/.*\\\\.md5$;/_notes/;doc/html/.*\\\\.map$;Makefile")
+set(CPACK_SOURCE_IGNORE_FILES "/\\\\..*/;~$;.*\\\\.swp$;/releases/;/${CMAKE_BINARY_DIR}/;/;/_notes/;doc/html/.*\\\\.md5$;/_notes/;doc/html/.*\\\\.map$;Makefile")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}")
-
 
 set(CPACK_PACKAGE_EXECUTABLES "MyExecutable" "My Executable")
 
