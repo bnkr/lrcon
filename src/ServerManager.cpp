@@ -16,22 +16,24 @@ void ServerManager::commandEntered() {
   try {
     QRCON_DEBUG_MESSAGE("Open connection.");
     
-    const char *password = (password_.text().length()) 
-        ? password_.text().toAscii().constData()
-        : "";
+    // It seems to be necessary to do this because the constData() function
+    // returns whatever the last toAscii() command returned...
+    QString password = password_.text();
     
+    QRCON_DEBUG_MESSAGE("password '" << password_.text().toAscii().constData() << "'");
+
     /// \todo this should only be declared once actually, but what
     ///       if it kicks you off?  Is there some timout?  Are you
     ///       authed forever-- what!?!  I think I will need a
     ///       reconnect() method.  Implies we should store the 
     ///       data from those fields tho.
-    rcon::connection conn(rcon::host(host_.text().toAscii().constData(), port_.text().toAscii().constData()), 
-                          password);
+    rcon::host h(host_.text().toAscii().constData(), port_.text().toAscii().constData());
+    rcon::connection conn(h, password.toAscii().constData());
   
     emit connected();
     output_.append(QString("<b>&gt; ") + command_.text() + "</b>");
     
-    QRCON_DEBUG_MESSAGE("sending " << command_.text().toAscii().constData());
+    QRCON_DEBUG_MESSAGE("sending '" << command_.text().toAscii().constData() << "'");
   
     rcon::command cmd(conn, command_.text().toAscii().constData());
   

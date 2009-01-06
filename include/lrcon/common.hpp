@@ -55,6 +55,7 @@
 #if defined(COMMON_DEBUG_MESSAGES) || defined(RCON_DEBUG_MESSAGES ) \
     || defined(QUERY_DEBUG_MESSAGES) 
 #  include <iostream>
+//! Base macro for all debug messages
 #  define LRCON_DEBUG_MESSAGE(x__)\
    std::cout << __FUNCTION__ << "(): " << x__ << std::endl;
 #else

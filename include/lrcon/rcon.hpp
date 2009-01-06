@@ -546,7 +546,7 @@ namespace rcon {
       \brief Connects to the server and auths.
       */
       connection(const host &server, const char *password) : common::connection_base(server) {
-        RCON_DEBUG_MESSAGE("Initialising authed connection.");
+        RCON_DEBUG_MESSAGE("Initialising authed connection with password '" << password << "'.");
         auth_command a(*this, password);
       }
       
