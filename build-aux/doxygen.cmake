@@ -569,25 +569,31 @@ macro(doxgyen_setup_flags flags_var target wants)
   endif()
 endmacro()
 
-macro(doxygen_install_targets doxygen_target wants install_to install_from)
+function(doxygen_install_targets doxygen_target wants install_to install_docs_from)
   message(STATUS "Adding doxygen make install targets.")
 
-  if (install_from EQUAL "")
+  # One hour of trial and error tells me that yes, you really do need to test it with
+  # the 'x' in front.
+  if ("x${install_docs_from}" STREQUAL "x")
+    set(install_from "${DOXYGEN_OUT_DIR}")
+
     if (DOXYGEN_CMAKE_VERBOSE)
-      message("Installing from the built docs '${DOXYGEN_OUT_DIR}' -- will be built.")
+      message("Installing from the built docs '${install_from}' -- will be built.")
     endif()
 
-    set(install_from "${DOXYGEN_OUT_DIR}")
-    set(rebuild "YES")
   else()
+    set(install_from "${install_docs_from}")
+
     if (DOXYGEN_CMAKE_VERBOSE)
-      message("Installing from user-specified '${install_from}'")
+      message("Installing from given path '${install_from}'")
     endif()
   endif()
 
   if (DOXYGEN_CMAKE_VERBOSE)
-    message("wants: '${wants}' with target '${doxygen_target}'")
-    message("will install to '${install_to}'")
+    message("* wants: '${wants}'")
+    message("* base target: '${doxygen_target}'")
+    message("* install from: '${install_from}'")
+    message("* install to: '${install_to}'")
   endif()
 
   foreach(iter ${wants})
@@ -633,5 +639,5 @@ macro(doxygen_install_targets doxygen_target wants install_to install_from)
 
   endforeach()
 
-endmacro()
+endfunction()
 

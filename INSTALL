@@ -35,10 +35,12 @@ which are used on the Unix build to see which libs are necessary to be defined.
 This can also be done with -DVAR=VAL from the cmake command if you wanted to script
 it (recommended if you are expecting to recompile later).
 
-This is very manual and extremely annoying, but it seems to be almost impossible to 
-get any introspective information about the Qt installation without using the defaults
-it was installed with despite the fact that one can cross-compile a Qt program with 
-a qmake spec file, just like cmake has the TOOLCHAIN_FILE.  In fact, it might help
-to write such a spec file with your cross-compile environment defined and try and 
-extract the necessary variables from the generated project.
+== Distributing ==
 
+You'll need to know CMake and CPack.  Most stuff can be done with ccmake (the cmake
+GUI) if you turn on the CPack generators by setting variables like CPACK_SOURCE_*
+and CPACK_BINARY_*.  
+
+Unfortunately, the CPack generators are not far advanced.  In particular for a source
+distribution, you need to manually copy built docs into the source tree, and also 
+do the whole thing from a clean clone from git.

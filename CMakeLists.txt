@@ -122,9 +122,11 @@ if (WANT_DOCS)
   )
 
   if (WANT_DOXYGEN_REBUILD)
-    set(INSTALL_FROM)
+    set(INSTALL_FROM "")
+    message("Selected rebuilt doxygen.")
   else()
     set(INSTALL_FROM "${CMAKE_SOURCE_DIR}/doc/")
+    message("Installing distributed doxygen.")
   endif()
 
   doxygen_install_targets(
