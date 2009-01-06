@@ -14,9 +14,6 @@ enable_testing()
 add_subdirectory("tests")
 
 # For different types of CMAKE_BUILD_TYPE
-# TODO: it seems that ccmake just overwrites this stuff - 
-#       how can I put a default in there?  Or do I overwrite
-#       ccmake?  It's not clear at all!
 # set(CMAKE_C_FLAGS_DEBUG "-g -Wall")
 # set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall")
 # set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
@@ -161,11 +158,11 @@ install(
 message(STATUS "Doing CPack stuff.")
 message("Note: latest doc/ must be added into the source dir manually for a source package!")
 
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "My funky project")
-set(CPACK_PACKAGE_VENDOR "Me, myself, and I")
-set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
-set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/build-aux/install-readme.txt")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "RCON protocol implementation, including programs for communicating with RCON servers.")
+set(CPACK_PACKAGE_VENDOR "bunkersoft")
+set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/build-aux/install-readme.txt")
 
 string(REGEX REPLACE "^([0-9]+).*" "\\1" PROJECT_MAJOR ${PROJECT_VERSION})
 string(REGEX REPLACE "^[^.]+\\.([0-9]+).*" "\\1" PROJECT_MINOR ${PROJECT_VERSION})
@@ -178,34 +175,32 @@ set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_PATCH})
 set(CPACK_SOURCE_TGZ "ON")
 set(CPACK_SOURCE_TBZ2 "OFF")
 set(CPACK_SOURCE_TZ "OFF")
+set(CPACK_SOURCE_ZIP "OFF")
 
 set(CPACK_BINARY_STGZ "OFF")
 set(CPACK_BINARY_TBZ2 "OFF")
-set(CPACK_BINARY_TGZ "ON")
+set(CPACK_BINARY_TGZ "OFF")
 set(CPACK_BINARY_TZ "OFF")
 
 # Yes, you really need all that escape crap.
-# TODO: make a user-defined var for extra stuff to ignore
 set(CPACK_SOURCE_IGNORE_FILES "/\\\\..*/;~$;.*\\\\.swp$;/releases/;/${CMAKE_BINARY_DIR}/;/;/_notes/;doc/html/.*\\\\.md5$;/_notes/;doc/html/.*\\\\.map$;Makefile")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}")
 
-set(CPACK_PACKAGE_EXECUTABLES "MyExecutable" "My Executable")
+set(CPACK_PACKAGE_EXECUTABLES "lrcon" "RCON command line" "qrcon" "RCON Qt")
 
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")
-if(WIN32 AND NOT UNIX)
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "lrcon ${PROJECT_VERSION}")
+if(WIN32)
   # There is a bug in NSI that does not handle full unix paths properly. Make
   # sure there is at least one set of four (4) backlasshes.
-  # TODO: all of this, but it requires cross-compile anyway
-  set(CPACK_PACKAGE_ICON "${CMake_SOURCE_DIR}/Utilities/Release\\\\InstallIcon.bmp")
-  set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\MyExecutable.exe")
-  set(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} My Famous Project")
-  set(CPACK_NSIS_HELP_LINK "http:\\\\\\\\www.my-project-home-page.org")
-  set(CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\www.my-personal-home-page.com")
-  set(CPACK_NSIS_CONTACT "me@my-personal-home-page.com")
+  # set(CPACK_PACKAGE_ICON "${CMake_SOURCE_DIR}/Utilities/Release\\\\InstallIcon.bmp")
+  # set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\MyExecutable.exe")
+  set(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} Lrcon programs and library.")
+  set(CPACK_NSIS_HELP_LINK "http:\\\\\\\\www.bunkerprivate.com")
+  set(CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\www.bunkerprivate.com")
+  set(CPACK_NSIS_CONTACT "bunkerprivate@googlemail.com")
   set(CPACK_NSIS_MODIFY_PATH ON)
 else()
-  set(CPACK_STRIP_FILES "bin/MyExecutable")
-  
+  set(CPACK_STRIP_FILES "bin/lrcon" "bin/qrcon")
   set(CPACK_SOURCE_STRIP_FILES "")
 endif()
 
