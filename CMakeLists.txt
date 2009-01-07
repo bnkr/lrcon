@@ -185,7 +185,7 @@ set(CPACK_BINARY_TGZ "OFF")
 set(CPACK_BINARY_TZ "OFF")
 
 # Yes, you really need all that escape crap.
-set(CPACK_SOURCE_IGNORE_FILES "/\\\\..*/;~$;.*\\\\.swp$;/releases/;/${CMAKE_BINARY_DIR}/;/;/_notes/;doc/html/.*\\\\.md5$;/_notes/;doc/html/.*\\\\.map$;Makefile")
+set(CPACK_SOURCE_IGNORE_FILES "^\\\\..*/;~$;.*\\\\.swp$;/releases/;${CMAKE_BINARY_DIR}/;doc/html/.*\\\\.md5$;doc/html/.*\\\\.map$;Makefile")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}")
 
 set(CPACK_PACKAGE_EXECUTABLES "lrcon" "RCON command line" "qrcon" "RCON Qt")
