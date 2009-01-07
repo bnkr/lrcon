@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 2.6)
 # For ease of use later
 set(PROJECT_NAME lrcon)
-set(PROJECT_VERSION 0.6.1)
+set(PROJECT_VERSION "0.6.2")
 project(${PROJECT_NAME})
 include("build-aux/doxygen.cmake")
 
