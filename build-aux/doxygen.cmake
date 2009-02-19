@@ -151,9 +151,9 @@
 #   - DOXYGEN_PDF_FILE = $doxygen_out/$rel_pdf_file
 #
 #   This macro also responds to the following variables:
-#   - DOXYGEN_EXAMPLE_PATH = a *complete* path to the example dir; default
+#   - DOXYGEN_EXAMPLE_PATH = a path to the example dir; default
 #                            $srcdir/examples
-#   - DOXYGEN_INPUT_PATHS = a *string* containing *complete* paths to the
+#   - DOXYGEN_INPUT_PATHS = a *string* containing paths to the
 #                           dirs for doxygen to read from, default is
 #                           $srcdir/include
 #   - PROJECT_NAME = used for the PROJECT_NAME configuration

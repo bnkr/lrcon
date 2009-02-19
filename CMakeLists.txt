@@ -13,14 +13,14 @@ include_directories(${CMAKE_SOURCE_DIR}/include/)
 enable_testing()
 add_subdirectory("tests")
 
-# For different types of CMAKE_BUILD_TYPE
+# For different types of CMAKE_BUILD_TYPE (TODO: bdbg for this!)
 # set(CMAKE_C_FLAGS_DEBUG "-g -Wall")
 # set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall")
 # set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 # set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall")
 
 # Global consts for libraries etc.
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+if(WIN32)
   set(LRCON_LIBRARIES -lws2_32)
 else()
   set(LRCON_LIBRARIES "")
@@ -65,8 +65,6 @@ set(BIN_QRCON "qrcon")
 set(BIN_QRCON_SRCS src/qrcon.cpp src/ServerManager.cpp)
 set(BIN_QRCON_MOC_SRCS src/ServerManager.hpp)
 
-# TODO: build this into the sourcedir (use generate_moc()) so that cpack
-#       can generte it for the sourcebuild.
 qt4_wrap_cpp(BIN_QRCON_MOC_OUTPUT ${BIN_QRCON_MOC_SRCS})
 add_executable(${BIN_QRCON} ${BIN_QRCON_SRCS} ${BIN_QRCON_MOC_OUTPUT})
 target_link_libraries(${BIN_QRCON} ${QT_LIBRARIES} ${LRCON_LIBRARIES})
@@ -85,6 +83,7 @@ endif()
 set(DOXYGEN_CMAKE_VERBOSE "yes")
 
 set(DOXYGEN_TARGET "doxygen")
+set(DOXYGEN_INPUT_PATHS "include/")
 doxgyen_setup_flags(
   DOXYGEN_FLAGS 
   "${DOXYGEN_TARGET}"
