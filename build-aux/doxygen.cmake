@@ -203,6 +203,13 @@ find_program(MAKE_EXECUTABLE make gmake nmake)
 
 
 function(add_doxygen target_name template_file directives_list)
+  # TODO: could do with the ability to specify further dependancies,
+  #       eg force a rebuild whenever srcdir changes.
+
+  # TODO: need to use a relative dir as the input dirs because otherwise the
+  #       include paths appear with the full /home/... path in there.  Maybe
+  #       that's supposed to happen in another function?
+
   if (NOT DOXYGEN_EXECUTABLE)
     message(STATUS "Ignoring doxygen targets due to no doxygen exe.")
   endif()
@@ -576,13 +583,14 @@ function(doxygen_install_targets doxygen_target wants install_to install_docs_fr
   # the 'x' in front.
   if ("x${install_docs_from}" STREQUAL "x")
     set(install_from "${DOXYGEN_OUT_DIR}")
+    set(rebuild TRUE)
 
     if (DOXYGEN_CMAKE_VERBOSE)
       message("Installing from the built docs '${install_from}' -- will be built.")
     endif()
-
   else()
     set(install_from "${install_docs_from}")
+    set(rebuild FALSE)
 
     if (DOXYGEN_CMAKE_VERBOSE)
       message("Installing from given path '${install_from}'")
@@ -606,6 +614,11 @@ function(doxygen_install_targets doxygen_target wants install_to install_docs_fr
 
       if (rebuild)
         add_custom_target(depend_${doxygen_target}_pdf ALL DEPENDS "${DOXYGEN_PDF_FILE}")
+        if (DOXYGEN_CMAKE_VERBOSE)
+          message("  pdf depend target added (depend_${doxygen_target}_pdf)")
+        endif()
+      elseif(DOXYGEN_CMAKE_VERBOSE)
+        message("  no pdf depend target added")
       endif()
 
       install(
@@ -613,15 +626,20 @@ function(doxygen_install_targets doxygen_target wants install_to install_docs_fr
         DESTINATION "${inst}"
       )
     elseif(iter MATCHES "html")
-      if (rebuild)
-        add_custom_target(depend_${doxygen_target}_html ALL DEPENDS "${DOXYGEN_HTML_DIR}")
-      endif()
-
       set(file "${install_from}/${DOXYGEN_REL_HTML_DIR}")
       set(inst "${install_to}")
 
       if (DOXYGEN_CMAKE_VERBOSE)
         message("html:\n  from: ${file}\n  to: ${inst}")
+      endif()
+
+      if (rebuild)
+        add_custom_target(depend_${doxygen_target}_html ALL DEPENDS "${DOXYGEN_HTML_DIR}")
+        if (DOXYGEN_CMAKE_VERBOSE)
+          message("  html depend target added (depend_${doxygen_target}_html)")
+        endif()
+      elseif(DOXYGEN_CMAKE_VERBOSE)
+        message("  no html depend target added")
       endif()
 
       install(
