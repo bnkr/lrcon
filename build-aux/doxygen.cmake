@@ -200,6 +200,7 @@ find_package(LATEX)
 
 find_program(CAT_EXE cat type)
 find_program(MAKE_EXECUTABLE make gmake nmake)
+mark_as_advanced(CAT_EXE MAKE_EXECUTABLE)
 
 
 function(add_doxygen target_name template_file directives_list)
@@ -209,6 +210,10 @@ function(add_doxygen target_name template_file directives_list)
   # TODO: need to use a relative dir as the input dirs because otherwise the
   #       include paths appear with the full /home/... path in there.  Maybe
   #       that's supposed to happen in another function?
+
+  # TODO: if doxyfile-force is deleted then the build breaks; we need to
+  #       set that to depend on the re-configure build depend.  It is rebuild_cache
+  #       for me but is that guaranteed?
 
   if (NOT DOXYGEN_EXECUTABLE)
     message(STATUS "Ignoring doxygen targets due to no doxygen exe.")
@@ -226,7 +231,7 @@ function(add_doxygen target_name template_file directives_list)
   
   set(doxygen_conf_file "${CMAKE_BINARY_DIR}/${target_name}-doxyfile-generated")
   set(additions_file "${CMAKE_BINARY_DIR}/${target_name}-doxyfile-forced")
-  
+ 
   message("Doxygen forced vars are in ${additions_file}.")
 
   ## Detect paths and vars defined by the template file and the overrides ##
