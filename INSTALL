@@ -14,11 +14,13 @@ of it is not expected.
    Initialising the build system.
 3. Configuration
    Setting library location, enabling/disabling features etc.
-4. Building
+4. Fixing Configuration Problems
+   What to do when it breaks.
+5. Building
    Building executables and anything else which the build system does.
-5. Cross-Compiling
+6. Cross-Compiling
    Particular information about compiling for a different target system.
-6. Installing
+7. Installing
    Standard installation targets and some CPack information (for .deb etc.)
 
 == Links ==
@@ -120,6 +122,10 @@ try this command:
 The second grep restricts the output to only missing variables.  Note that the 
 first grep relies on my own conventions.  All my dependencies are in x_LIB or
 x_EXE or HAVE_x (for headers).
+
+In the case of HAVE_x values, it will either require an addition to the *FLAGS
+variables to add an include directory, or to patch the source which is looks
+for the header.
 
 If you would like to see what is going on internally, grep for 'option' for 
 the boolean WANTs and CACHE for the string-like variables.

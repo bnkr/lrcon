@@ -6,18 +6,16 @@ cmake_minimum_required(VERSION 2.6)
 set(PROJECT_NAME lrcon)
 set(PROJECT_VERSION "0.6.2")
 project(${PROJECT_NAME})
+
 include("build-aux/doxygen.cmake")
+include("build-aux/btest.cmake")
+include("build-aux/butil.cmake")
 
-# General properties of the build
-include_directories(${CMAKE_SOURCE_DIR}/include/)
-enable_testing()
-add_subdirectory("tests")
+butil_standard_setup()
 
-# For different types of CMAKE_BUILD_TYPE (TODO: bdbg for this!)
-# set(CMAKE_C_FLAGS_DEBUG "-g -Wall")
-# set(CMAKE_CXX_FLAGS_DEBUG "-g -Wall")
-# set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
-# set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall")
+###########################
+## Building normal stuff ##
+###########################
 
 # Global consts for libraries etc.
 if(WIN32)
@@ -25,25 +23,6 @@ if(WIN32)
 else()
   set(LRCON_LIBRARIES "")
 endif()
-
-# General options
-option(WANT_DOCS "Install documentation - when off, all other docs options are off." YES)
-option(WANT_DOXYGEN_HTML "Install HTML made by doxygen" YES)
-option(WANT_DOXYGEN_PDF "Install PDF from doxygen (needs pdfLaTeX)" YES)
-option(WANT_DOXYGEN_REBUILD "Regenerate doxygen and install that instead of the distributed docs." NO)
-
-set(DOXYGEN_DOXYFILE_TEMPLATE "${CMAKE_SOURCE_DIR}/Doxyfile.default" CACHE STRING 
-    "Base doxyfile.  Mostly useful for developers.  Certain vars will be overwritten by cmake (in/output paths mostly).")
-
-mark_as_advanced(
-  DOXYGEN_DOXYFILE_TEMPLATE 
-  WANT_DOXYGEN_REBUILD
-  WANT_DOXYGEN_HTML WANT_DOXYGEN_PDF
-)
-
-###########################
-## Building normal stuff ##
-###########################
 
 # Lrcon binary stuff
 set(BIN_LRCON "lrcon")
@@ -73,28 +52,15 @@ target_link_libraries(${BIN_QRCON} ${QT_LIBRARIES} ${LRCON_LIBRARIES})
 ## Building Doxygen ##
 ######################
 
-if (WANT_DOXYGEN_PDF)
-  list(APPEND DOXYGEN_WANTS "pdf")
-endif()
-if (WANT_DOXYGEN_HTML)
-  list(APPEND DOXYGEN_WANTS "html")
-endif()
-
-set(DOXYGEN_CMAKE_VERBOSE "yes")
-
-set(DOXYGEN_TARGET "doxygen")
-set(DOXYGEN_INPUT_PATHS "include/")
-doxgyen_setup_flags(
-  DOXYGEN_FLAGS 
-  "${DOXYGEN_TARGET}"
-  "${DOXYGEN_WANTS}"
+add_doxygen_directives(
+  TARGET doxygen
+  INPUTS "include/"
+  ARGS_VAR ad_args
+  DOCS_MIRROR "${CMAKE_SOURCE_DIR}/doc"
+  DEFAULT_DOXYFILE "${CMAKE_SOURCE_DIR}/Doxyfile.default"
+  INSTALL ${WANT_DOCS}
 )
-
-add_doxygen(
-  ${DOXYGEN_TARGET}
-  ${DOXYGEN_DOXYFILE_TEMPLATE}
-  "${DOXYGEN_FLAGS}"
-)
+add_doxygen(${ad_args})
 
 ##################
 ## Installation ##
@@ -118,21 +84,6 @@ if (WANT_DOCS)
   install(
     FILES README COPYING 
     DESTINATION ${DOCDIR}
-  )
-
-  if (WANT_DOXYGEN_REBUILD)
-    set(INSTALL_FROM "")
-    message("Selected rebuilt doxygen.")
-  else()
-    set(INSTALL_FROM "${CMAKE_SOURCE_DIR}/doc/")
-    message("Installing distributed doxygen.")
-  endif()
-
-  doxygen_install_targets(
-    "${DOXYGEN_TARGET}" 
-    "${DOXYGEN_WANTS}" 
-    "${DOCDIR}" 
-    "${INSTALL_FROM}"
   )
 endif(WANT_DOCS)
 
@@ -162,61 +113,19 @@ if (WIN32)
   )
 endif()
 
-
-
 #################
 ## CPack Stuff ##
 #################
 
-message(STATUS "Doing CPack stuff.")
-message("Note: latest doc/ must be added into the source dir manually for a source package!")
-
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "RCON protocol implementation, including programs for communicating with RCON servers.")
-set(CPACK_PACKAGE_VENDOR "bunkersoft")
-set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING")
-set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/build-aux/install-readme.txt")
-
-string(REGEX REPLACE "^([0-9]+).*" "\\1" PROJECT_MAJOR ${PROJECT_VERSION})
-string(REGEX REPLACE "^[^.]+\\.([0-9]+).*" "\\1" PROJECT_MINOR ${PROJECT_VERSION})
-string(REGEX REPLACE "^[^.]+\\.[^.]+\\.([0-9]+).*" "\\1" PROJECT_PATCH ${PROJECT_VERSION})
-string(REGEX REPLACE "^[^.]+\\.[^.]+\\.[^\\-]-([0-9]+).*" "\\1" PROJECT_SNAPSHOT ${PROJECT_VERSION})
-set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_PATCH})
-
-set(CPACK_SOURCE_TGZ "ON")
-set(CPACK_SOURCE_TBZ2 "OFF")
-set(CPACK_SOURCE_TZ "OFF")
-set(CPACK_SOURCE_ZIP "OFF")
-
-set(CPACK_BINARY_STGZ "OFF")
-set(CPACK_BINARY_TBZ2 "OFF")
-set(CPACK_BINARY_TGZ "OFF")
-set(CPACK_BINARY_TZ "OFF")
-
-# Yes, you really need all that escape crap.
-set(CPACK_SOURCE_IGNORE_FILES "/\\\\..*/;~$;.*\\\\.swp$;/releases/;${CMAKE_BINARY_DIR}/;doc/html/.*\\\\.md5$;doc/html/.*\\\\.map$;Makefile")
-set(CPACK_SOURCE_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}")
-
-set(CPACK_PACKAGE_EXECUTABLES "lrcon" "RCON command line" "qrcon" "RCON Qt")
-
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "lrcon ${PROJECT_VERSION}")
-if(WIN32)
-  # There is a bug in NSI that does not handle full unix paths properly. Make
-  # sure there is at least one set of four (4) backlasshes.
-  # set(CPACK_PACKAGE_ICON "${CMake_SOURCE_DIR}/Utilities/Release\\\\InstallIcon.bmp")
-  # set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\MyExecutable.exe")
-  set(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} Lrcon programs and library.")
-  set(CPACK_NSIS_HELP_LINK "http:\\\\\\\\www.bunkerprivate.com")
-  set(CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\www.bunkerprivate.com")
-  set(CPACK_NSIS_CONTACT "bunkerprivate@googlemail.com")
-  set(CPACK_NSIS_MODIFY_PATH ON)
-else()
-  set(CPACK_STRIP_FILES "bin/lrcon" "bin/qrcon")
-  set(CPACK_SOURCE_STRIP_FILES "")
-endif()
-
-
-include(CPack)
+butil_cpack_setup(
+  DESCRIPTION "RCON library and programs."
+  LONG_DESCRIPTION
+    "RCON protocol implementation, including programs for communicating with RCON servers."
+  VENDOR      "bunker"
+  EMAIL       "bunker@bunkerprivate.com"
+  URL         "http://www.bunkerprivate.com/"
+  BINARIES    "bin/qrcon" "bin/lrcon"
+  RUNNABLES   "lrcon" "RCON command line" 
+              "qrcon" "RCON Qt GUI"
+)
 
