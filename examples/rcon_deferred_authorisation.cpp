@@ -1,17 +1,17 @@
 try {
   rcon::host h("127.0.0.1", "27015");
   rcon::connection conn(h);
-  
+
   const char *pass = "password";
   size_t retries = 3;
   rcon::auth_command::auth_t auth_value = rcon::auth_command::error;
   do {
     rcon::auth_command returned(conn, pass, rcon::auth_command::nocheck);
     auth_value = returned.auth();
-    
+
     if (retries == 0) {
       std::cerr << "Authorisation retries limit reached:\n" << returned.data() << std::endl;
-      break;
+      goto error_finish;
     }
     else if (auth_value == rcon::auth_command::failed) {
       std::cerr << "Authorisation was denied:\n" << returned.data() << std::endl;
@@ -20,7 +20,7 @@ try {
     --retries;
   }
   while (auth_value == rcon::auth_command::error);
-  
+
   retries = 3;
   while (retries--) {
     rcon::command returned(conn, "status", rcon::command::nocheck);
@@ -33,6 +33,7 @@ try {
     }
   }
 
+error_finish:
 }
 catch (rcon::connection_error &e) {
   std::cerr << "Unable to connect: " << e.what() << std::endl;
