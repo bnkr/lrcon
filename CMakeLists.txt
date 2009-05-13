@@ -66,6 +66,7 @@ add_doxygen(${ad_args})
 ## Installation ##
 ##################
 
+# TODO: use butil auto installer
 message(STATUS "Adding install targets.")
 
 set(INCLUDEDIR "include/")
@@ -79,10 +80,10 @@ set(DVIDIR "${DATADIR}/doc/lrcon/")
 set(PSDIR "${DATADIR}/doc/lrcon/")
 
 
-if (WANT_DOCS) 
+if (WANT_DOCS)
   # Documentation
   install(
-    FILES README COPYING 
+    FILES README COPYING
     DESTINATION ${DOCDIR}
   )
 endif(WANT_DOCS)
@@ -102,7 +103,7 @@ install(
   RUNTIME DESTINATION ${BINDIR}
 )
 
-if (WIN32) 
+if (WIN32)
   message("Notice: windows binaries packages won't work without windows libs distributed.")
   set(WINDOWS_LIBS "build-aux/mingwm10.dll" "build-aux/QtCore4.dll" "build-aux/QtGui4.dll")
   message("Windows libs are ${WINDOWS_LIBS}")
@@ -125,7 +126,7 @@ butil_cpack_setup(
   EMAIL       "bunker@bunkerprivate.com"
   URL         "http://www.bunkerprivate.com/"
   BINARIES    "bin/qrcon" "bin/lrcon"
-  RUNNABLES   "lrcon" "RCON command line" 
+  RUNNABLES   "lrcon" "RCON command line"
               "qrcon" "RCON Qt GUI"
 )
 
