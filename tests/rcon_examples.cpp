@@ -1,4 +1,6 @@
-#include "../src/rcon.hpp"
+#include <lrcon.hpp>
+
+#include <iostream>
 
 int main() {
   #include "../examples/rcon_basic_usage.cpp"
