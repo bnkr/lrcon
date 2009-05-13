@@ -67,52 +67,20 @@ add_doxygen(${ad_args})
 ##################
 
 # TODO: use butil auto installer
-message(STATUS "Adding install targets.")
-
-set(INCLUDEDIR "include/")
-set(BINDIR "bin")
-set(DATADIR "share/")
-set(LIBDIR "lib/")
-set(DOCDIR "${DATADIR}/doc/lrcon/")
-set(HTMLDIR "${DATADIR}/doc/lrcon/")
-set(PDFDIR "${DATADIR}/doc/lrcon/")
-set(DVIDIR "${DATADIR}/doc/lrcon/")
-set(PSDIR "${DATADIR}/doc/lrcon/")
-
-
-if (WANT_DOCS)
-  # Documentation
-  install(
-    FILES README COPYING
-    DESTINATION ${DOCDIR}
-  )
-endif(WANT_DOCS)
-
-# Header files
-install(FILES include/lrcon.hpp DESTINATION ${INCLUDEDIR})
-install(
-  FILES include/lrcon/query.hpp
-        include/lrcon/rcon.hpp
-        include/lrcon/common.hpp
-  DESTINATION ${INCLUDEDIR}/lrcon/
-)
-
-# Binaries
-install(
+butil_auto_install(
+  RUNNABLES_VAR runnables
+  RUNNABLES "${BIN_LRCON}" "RCON command line"
+            "${BIN_QRCON}" "RCON Qt GUI"
+  BINARIES_VAR stuff_to_strip
   TARGETS ${BIN_LRCON} ${BIN_QRCON}
-  RUNTIME DESTINATION ${BINDIR}
+  # INCLUDE_DIRS dir...
+  # [HEADER_EXCLUDE pattern... | NO_HEADERS]
+  # WINDOWS_LIBS library...]
+  # Use ln to put the dlls into bindir instead of copy.
+  HARDLINK_AUX_DLLS
+  # Always search for dlls to install in build-aux.
+  BUILD_AUX_DLLS
 )
-
-if (WIN32)
-  message("Notice: windows binaries packages won't work without windows libs distributed.")
-  set(WINDOWS_LIBS "build-aux/mingwm10.dll" "build-aux/QtCore4.dll" "build-aux/QtGui4.dll")
-  message("Windows libs are ${WINDOWS_LIBS}")
-  message("They can be symlinks, but this breaks everything except NSIS.")
-  install(
-    FILES ${WINDOWS_LIBS}
-    DESTINATION ${BINDIR}
-  )
-endif()
 
 #################
 ## CPack Stuff ##
@@ -125,8 +93,7 @@ butil_cpack_setup(
   VENDOR      "bunker"
   EMAIL       "bunker@bunkerprivate.com"
   URL         "http://www.bunkerprivate.com/"
-  BINARIES    "bin/qrcon" "bin/lrcon"
-  RUNNABLES   "lrcon" "RCON command line"
-              "qrcon" "RCON Qt GUI"
+  BINARIES    ${stuff_to_strip}
+  RUNNABLES   ${runnables}
 )
 
