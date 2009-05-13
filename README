@@ -1,10 +1,15 @@
-lrcon is a library for querying source servers in two parts: RCON and query.  The 
-RCON protocol is for remotely managing servers, while the query part is for the 
-public informational protocol used by steam.
+Installation
+------------
 
-Also distributed are three applications, 'lrcon', 'qrcon' and 'query', which perform 
-the functions of their respective parts of the library.  Qrcon is a Qt-GUI 
-version of the RCON application.
+See INSTALL.
 
-The applications are licensed under the GPLv3, whilst the library parts are under the 
-LGPL.  This is clarified at the top of each file.
+Usage
+-----
+
+There are two programs, lrcon and qrcon.  The first is a command-line program
+whose usage is explained by the -h help text.  The qrcon program is a Qt4 GUI
+which should be self explanatory.
+
+Check the help text of each program.
+
+The library parts are all in include/ and documented by doxygen in doc/*.
