@@ -22,6 +22,7 @@
 #  define isatty(x__) (true)
 #else
 #  include <unistd.h> // isatty
+#  include <cstdio> // stdin
 #endif
 
 //! Run one command and handle errors. >0 on error.

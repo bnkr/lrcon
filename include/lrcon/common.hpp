@@ -39,6 +39,8 @@
 #  include <arpa/inet.h>
 #  include <netdb.h>
 #  include <fcntl.h>
+#  include <fcntl.h>
+#  include <unistd.h>
 #endif
 
 #ifdef HAVE_ENDIAN_H
