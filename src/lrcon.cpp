@@ -1,7 +1,7 @@
 // Copyright (C) 2008 James Weber
 // Under the GPL3, see COPYING
 /*!
-\file 
+\file
 \brief Client application to execute rcon commands.
 
 \internal
@@ -31,10 +31,10 @@ int single_command(rcon::connection &conn, const std::string &command);
 int stream_command(rcon::connection &conn, std::istream &in, const std::string &host, const std::string &port);
 
 void print_usage(const char *pname) {
-  std::cout 
+  std::cout
       << pname << " -p password [OPTIONS] command [args]...\n"
       "Executes command with args on an RCON server and retrieve the output.  Command\n"
-      "can be a dash (-) to trigger reading from stdin.  The program automatically\n" 
+      "can be a dash (-) to trigger reading from stdin.  The program automatically\n"
       "reads from stdin on Unix if it was redirected.\n\n"
       "  -p  password (required argument)\n"
       "  -P  port (default: 27015)\n"
@@ -63,11 +63,11 @@ int stream_command(rcon::connection &conn, std::istream &in, const std::string &
   do {
     std::getline(in, cmd);
     if (cmd == "") continue;
-    
+
     std::cout << host << ":" << port << " > rcon " << cmd << std::endl;
     if (int r = single_command(conn, cmd)) return r;
   } while (! in.eof());
-  
+
   return EXIT_SUCCESS;
 }
 
@@ -117,7 +117,7 @@ int main(const int argc, const char *const argv[]) {
       else if (strcmp(argv[i], "-s") == 0) {
         ++i;
         if (! check_required_arg(argc, argv, i, "-s")) return EXIT_FAILURE;
-        
+
         host = argv[i];
       }
       else if (strcmp(argv[i], "-") == 0) {
@@ -130,18 +130,18 @@ int main(const int argc, const char *const argv[]) {
       else if (argv[i][0] != '-') {
         break;
       }
-    
+
       ++i;
     }
-    
+
     read_from_stdin = read_from_stdin || ! isatty(fileno(stdin));
-    
+
     if (pass[0] == '\0') {
       std::cerr << "Error: no password parameter." << std::endl;
       print_usage(argv[0]);
-      return EXIT_FAILURE; 
+      return EXIT_FAILURE;
     }
-    
+
     if (i >= argc && ! read_from_stdin) {
       std::cerr << "Error: no command given." << std::endl;
       print_usage(argv[0]);
@@ -150,7 +150,7 @@ int main(const int argc, const char *const argv[]) {
     else {
       try {
         rcon::connection conn(rcon::host(host, port), pass);
-        
+
         if (read_from_stdin) {
           if (int r = stream_command(conn, std::cin, host, port)) return r;
         }
@@ -173,4 +173,3 @@ int main(const int argc, const char *const argv[]) {
 
   return EXIT_SUCCESS;
 }
-
